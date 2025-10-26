@@ -9,7 +9,7 @@ from ..services.rule_engine import RuleEngine
 from ..models.email_models import EmailModel, AttachmentModel, EmailSyncStats
 from ..utils.email_parser import EmailParser
 from ..utils.logger import get_logger
-from ..services.email_extra_process.shipserv import process_shipserv_pdf
+from ..services.email_extra_process.shipserv import process_shipserv_pdf, process_shipserv_order_pdf
 
 logger = get_logger("email_sync")
 
@@ -193,12 +193,8 @@ class EmailSyncService:
             raise
 
     async def _process_email_extra(self, parsed_email: Dict[str, Any], attachment_models: List[AttachmentModel]):
-        # 不处理非询价邮件
-        if parsed_email.get('rfq') != True:
-            return
-
         try:
-            if parsed_email.get('rfq_type') == 'ShipServ':
+            if parsed_email.get('rfq') == True and parsed_email.get('rfq_type') == 'ShipServ':
                 logger.debug(
                     f"开始额外处理shipserv邮件: message_id={parsed_email['message_id']}")
 
@@ -224,6 +220,31 @@ class EmailSyncService:
                         'meta_data': result['meta_data'],
                     }
                 return
+            if parsed_email.get('type') == 'ORDER' and parsed_email.get('rfq_type') == 'ShipServ':
+                logger.debug(
+                    f"开始额外处理shipserv订单邮件: message_id={parsed_email['message_id']}")
+
+                # 逐个处理附件
+                for attachment_model in attachment_models:
+                    file_path = attachment_model.file_path
+
+                    # 跳过非pdf附件
+                    if not file_path.endswith('.pdf'):
+                        continue
+
+                    # 解析询价pdf数据
+                    result = process_shipserv_order_pdf(file_path)
+                    if not result:
+                        continue
+
+                    # 将数据保存在附件的extra字段中
+                    attachment_model.extra = {
+                        'type': 'ORDER',
+                        'from': 'ShipServ',
+                        'version': 1,
+                        'code': result['code'],
+                    }
+                return
         except Exception as e:
             logger.error(f"邮件额外处理失败: {e}")
             raise
@@ -245,6 +266,7 @@ class EmailSyncService:
             dispatcher_id=parsed_email.get('dispatcher_id'),
             rfq=parsed_email.get('rfq'),
             rfq_type=parsed_email.get('rfq_type'),
+            type=parsed_email.get('type'),
         )
 
     async def _process_attachments(self, parsed_email: Dict[str, Any],

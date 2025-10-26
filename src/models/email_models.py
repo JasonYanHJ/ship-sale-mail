@@ -23,6 +23,7 @@ class EmailModel(BaseModel):
     rfq_type: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    type: Optional[str] = None
 
     def to_db_dict(self) -> Dict[str, Any]:
         """转换为数据库存储格式"""
@@ -41,6 +42,7 @@ class EmailModel(BaseModel):
             'dispatcher_id': self.dispatcher_id,
             'rfq': self.rfq,
             'rfq_type': self.rfq_type,
+            'type': self.type,
         }
         if self.id:
             data['id'] = self.id
@@ -97,11 +99,11 @@ class AttachmentModel(BaseModel):
     def from_db_dict(cls, data: Dict[str, Any]) -> 'AttachmentModel':
         """从数据库记录创建模型"""
         attachment_data = data.copy()
-        
+
         # 解析JSON字段
         if attachment_data.get('extra'):
             attachment_data['extra'] = json.loads(attachment_data['extra'])
-        
+
         return cls(**attachment_data)
 
 
