@@ -16,7 +16,7 @@ def process_shipserv_order_pdf(pdf_path: str) -> dict:
             try:
                 for page in pdf.pages:
                     result = page.search(
-                        r'QS[TP]\d{10}[A-Z]{3}', return_chars=False)
+                        r'QS[TP]\d{9,10}[A-Z]{3}', return_chars=False)
                     if result[0]:
                         code = result[0]['text']
                         break
