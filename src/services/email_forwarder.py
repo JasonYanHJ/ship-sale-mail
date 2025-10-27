@@ -40,7 +40,7 @@ class EmailForwarder:
         cc_addresses: Optional[List[str]] = None,
         bcc_addresses: Optional[List[str]] = None,
         additional_message: Optional[str] = None,
-        reply_to: Optional[List[str]] = None,
+        reply_to: List[str] = [],
     ) -> bool:
         """
         转发邮件
@@ -119,7 +119,7 @@ class EmailForwarder:
         cc_addresses: Optional[List[str]] = None,
         bcc_addresses: Optional[List[str]] = None,
         additional_message: Optional[str] = None,
-        reply_to: Optional[List[str]] = None,
+        reply_to: List[str] = [],
     ) -> bool:
         """发送转发邮件"""
         try:
@@ -411,3 +411,6 @@ Reply-To: {', '.join(reply_to)}
             logger.error(
                 f"Error getting forward status {forward_id}: {str(e)}")
             return None
+
+
+forwarder = EmailForwarder()

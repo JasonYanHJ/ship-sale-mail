@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from ..models.email_models import EmailForwardRequest
 from ..services.email_database import EmailDatabaseService
-from ..services.email_forwarder import EmailForwarder
+from ..services.email_forwarder import forwarder
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -10,7 +10,6 @@ router = APIRouter(prefix="/emails", tags=["emails"])
 
 # 服务实例
 db_service = EmailDatabaseService()
-forwarder = EmailForwarder()
 
 
 @router.post("/{email_id}/forward")

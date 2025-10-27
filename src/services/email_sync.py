@@ -10,6 +10,9 @@ from ..models.email_models import EmailModel, AttachmentModel, EmailSyncStats
 from ..utils.email_parser import EmailParser
 from ..utils.logger import get_logger
 from ..services.email_extra_process.shipserv import process_shipserv_pdf, process_shipserv_order_pdf
+from ..models.database import db_manager
+import aiomysql
+from ..services.email_forwarder import forwarder
 
 logger = get_logger("email_sync")
 
@@ -188,9 +191,48 @@ class EmailSyncService:
             logger.debug(f"邮件处理完成: UID={uid}, DB_ID={email_id}, "
                          f"附件数={len(attachment_ids)}")
 
+            # 11. 自动转发部分特定情形的邮件
+            await self._process_auto_forward(email_id, parsed_email, attachment_models)
         except Exception as e:
             logger.error(f"处理邮件失败 UID={uid}: {e}")
             raise
+
+    async def _process_auto_forward(self, email_id: int, parsed_email: Dict[str, Any], attachment_models: List[AttachmentModel]):
+        # 订单邮件，如果有成功解析出销售代码，则系统自动转发
+        if parsed_email.get('type') == 'ORDER':
+            for attachment_model in attachment_models:
+                if attachment_model.extra and attachment_model.extra['type'] == 'ORDER' and attachment_model.extra['code']:
+                    saler = None
+                    dispatcher = None
+
+                    async with db_manager.get_read_connection() as conn:
+                        async with conn.cursor(aiomysql.DictCursor) as cursor:
+                            # 根据销售代码后三位（代表销售的缩写）确定对应销售以及其组长
+                            sql = "SELECT s.*, l.* FROM salers s LEFT JOIN salers l ON s.leader_id = l.id WHERE s.abbr = %s"
+                            await cursor.execute(sql, (attachment_model.extra['code'][-3:],))
+                            saler = await cursor.fetchone()
+
+                            # 根据dispatcher_id获取转发员的信息
+                            if parsed_email.get('dispatcher_id'):
+                                sql = "SELECT * FROM users WHERE id = %s"
+                                await cursor.execute(sql, (parsed_email.get('dispatcher_id'),))
+                                dispatcher = await cursor.fetchone()
+
+                            logger.debug(f"销售数据：{saler}, 转发员数据：{dispatcher}")
+
+                    if saler:
+                        # 转发给销售，同时抄送order公共邮箱和销售组长，回复对象设置为转发员
+                        await forwarder.forward_email(
+                            email_id=email_id,
+                            to_addresses=[saler['email']],
+                            cc_addresses=['order@dan-marine.com'] + ([saler['l.email']]
+                                                                     if saler['l.email'] else []),
+                            reply_to=[dispatcher['email']
+                                      ] if dispatcher else [],
+                        )
+                    break
+            return
+        pass
 
     async def _process_email_extra(self, parsed_email: Dict[str, Any], attachment_models: List[AttachmentModel]):
         try:
