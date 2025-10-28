@@ -221,12 +221,15 @@ class EmailSyncService:
                             logger.debug(f"销售数据：{saler}, 转发员数据：{dispatcher}")
 
                     if saler:
-                        # 转发给销售，同时抄送order公共邮箱和销售组长，回复对象设置为转发员
+                        # 转发给销售，同时抄送order公共邮箱、转发员和销售组长，回复对象设置为转发员
                         await forwarder.forward_email(
                             email_id=email_id,
                             to_addresses=[saler['email']],
-                            cc_addresses=['order@dan-marine.com'] + ([saler['l.email']]
-                                                                     if saler['l.email'] else []),
+                            cc_addresses=['order@dan-marine.com']
+                            + ([saler['l.email']]
+                               if saler['l.email'] else [])
+                            + [dispatcher['email']
+                               ] if dispatcher else [],
                             reply_to=[dispatcher['email']
                                       ] if dispatcher else [],
                         )
