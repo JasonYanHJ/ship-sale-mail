@@ -540,7 +540,7 @@ class EmailDatabaseService:
         """
         try:
             # 安全检查：只允许更新特定字段
-            allowed_fields = {'dispatcher_id', 'rfq', 'rfq_type'}
+            allowed_fields = {'dispatcher_id', 'type', 'from_system'}
             if field_name not in allowed_fields:
                 logger.error(f"不允许更新字段: {field_name}")
                 raise ValueError(f"不允许更新字段: {field_name}")

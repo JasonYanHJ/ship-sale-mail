@@ -19,11 +19,10 @@ class EmailModel(BaseModel):
     date_received: Optional[datetime] = None
     raw_headers: Optional[str] = None
     dispatcher_id: Optional[int] = None  # 处理人ID，NULLABLE bigint unsigned
-    rfq: Optional[bool] = False
-    rfq_type: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     type: Optional[str] = None
+    from_system: Optional[str] = None
 
     def to_db_dict(self) -> Dict[str, Any]:
         """转换为数据库存储格式"""
@@ -40,9 +39,8 @@ class EmailModel(BaseModel):
             'date_received': self.date_received,
             'raw_headers': self.raw_headers,
             'dispatcher_id': self.dispatcher_id,
-            'rfq': self.rfq,
-            'rfq_type': self.rfq_type,
             'type': self.type,
+            'from_system': self.from_system,
         }
         if self.id:
             data['id'] = self.id

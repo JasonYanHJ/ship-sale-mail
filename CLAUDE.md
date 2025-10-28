@@ -108,8 +108,8 @@ Schema::table('emails', function (Blueprint $table) {
         ->onDelete('no action');
 });
 Schema::table('emails', function (Blueprint $table) {
-    $table->boolean('rfq')->nullable()->comment('询价邮件标记');
-    $table->string('rfq_type', 100)->nullable()->comment('询价邮件类型');
+    $table->string('from')->nullable()->comment('询价邮件来源系统');
+    $table->string('type')->nullable()->comment('询价邮件类型');
 });
 ```
 

@@ -239,7 +239,7 @@ class EmailSyncService:
 
     async def _process_email_extra(self, parsed_email: Dict[str, Any], attachment_models: List[AttachmentModel]):
         try:
-            if parsed_email.get('rfq') == True and parsed_email.get('rfq_type') == 'ShipServ':
+            if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'ShipServ':
                 logger.debug(
                     f"开始额外处理shipserv邮件: message_id={parsed_email['message_id']}")
 
@@ -265,7 +265,7 @@ class EmailSyncService:
                         'meta_data': result['meta_data'],
                     }
                 return
-            if parsed_email.get('type') == 'ORDER' and parsed_email.get('rfq_type') == 'ShipServ':
+            if parsed_email.get('type') == 'ORDER' and parsed_email.get('from_system') == 'ShipServ':
                 logger.debug(
                     f"开始额外处理shipserv订单邮件: message_id={parsed_email['message_id']}")
 
@@ -309,9 +309,8 @@ class EmailSyncService:
             date_received=datetime.now(),
             raw_headers=parsed_email.get('raw_headers'),
             dispatcher_id=parsed_email.get('dispatcher_id'),
-            rfq=parsed_email.get('rfq'),
-            rfq_type=parsed_email.get('rfq_type'),
             type=parsed_email.get('type'),
+            from_system=parsed_email.get('from_system'),
         )
 
     async def _process_attachments(self, parsed_email: Dict[str, Any],
