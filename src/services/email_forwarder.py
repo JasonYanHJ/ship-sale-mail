@@ -93,7 +93,7 @@ class EmailForwarder:
                 # 更新转发状态
                 if success:
                     await self.db_service.update_forward_status(forward_id, "sent")
-                    logger.info(
+                    logger.debug(
                         f"Email {email_id} forwarded successfully to {to_addresses}")
                     return True
                 else:
@@ -156,7 +156,7 @@ class EmailForwarder:
             # 添加附件
             for attachment in attachments:
                 if await self._add_attachment_to_message(msg, attachment):
-                    logger.info(
+                    logger.debug(
                         f"Added attachment: {attachment.original_filename}")
                 else:
                     logger.warning(
@@ -378,7 +378,7 @@ Reply-To: {', '.join(reply_to)}
                 text = msg.as_string()
                 server.sendmail(self.email_username, recipients, text)
 
-                logger.info(f"Email sent successfully to {recipients}")
+                logger.debug(f"Email sent successfully to {recipients}")
                 return True
 
         except smtplib.SMTPAuthenticationError as e:

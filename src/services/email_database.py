@@ -50,7 +50,7 @@ class EmailDatabaseService:
                     await cursor.execute(insert_sql, list(data.values()))
                     email_id = cursor.lastrowid
 
-                    logger.info(
+                    logger.debug(
                         f"邮件保存成功: ID={email_id}, message_id={email.message_id}")
                     return email_id
 
@@ -83,7 +83,7 @@ class EmailDatabaseService:
                     await cursor.execute(insert_sql, list(data.values()))
                     attachment_id = cursor.lastrowid
 
-                    logger.info(
+                    logger.debug(
                         f"附件信息保存成功: ID={attachment_id}, 文件={attachment.original_filename}")
                     return attachment_id
 
@@ -138,7 +138,7 @@ class EmailDatabaseService:
 
                         await cursor.execute(insert_sql, list(email_data.values()))
                         email_id = cursor.lastrowid
-                        logger.info(f"邮件保存成功: ID={email_id}")
+                        logger.debug(f"邮件保存成功: ID={email_id}")
 
                     # 2. 保存附件信息
                     attachment_ids = []

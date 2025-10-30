@@ -42,7 +42,7 @@ class RulesDatabaseService:
 
                         rules.append(rule)
 
-                    logger.info(f"获取到 {len(rules)} 条规则")
+                    logger.debug(f"获取到 {len(rules)} 条规则")
                     return rules
 
         except Exception as e:

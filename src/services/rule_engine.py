@@ -64,7 +64,7 @@ class RuleEngine:
             self.error_handler.clear_errors()
 
             message_id = email_data.get('message_id', 'unknown')
-            logger.info(f"开始对邮件应用规则: message_id={message_id}")
+            logger.debug(f"开始对邮件应用规则: message_id={message_id}")
 
             # 如果没有提供规则，从数据库加载
             if rules is None:
@@ -104,7 +104,7 @@ class RuleEngine:
                         rules_matched += 1
                         final_result.add_matched_rule(rule.name)
 
-                        logger.info(f"规则匹配: {rule.name}, 开始执行动作")
+                        logger.debug(f"规则匹配: {rule.name}, 开始执行动作")
 
                         # 执行规则动作
                         action_result = await self._execute_rule_actions(rule, email_data)
@@ -119,13 +119,13 @@ class RuleEngine:
 
                         # 检查是否需要停止后续规则执行
                         if rule.stop_on_match:
-                            logger.info(
+                            logger.debug(
                                 f"规则 {rule.name} 设置了 stop_on_match，停止后续规则执行")
                             break
 
                         # 如果动作设置了跳过标志，也停止后续规则执行
                         if final_result.should_skip:
-                            logger.info(f"规则 {rule.name} 的动作设置了跳过标志，停止后续规则执行")
+                            logger.debug(f"规则 {rule.name} 的动作设置了跳过标志，停止后续规则执行")
                             break
 
                     else:
@@ -155,7 +155,7 @@ class RuleEngine:
             self._update_execution_statistics(
                 total_time, rules_executed, rules_matched, final_result)
 
-            logger.info(
+            logger.debug(
                 f"规则引擎执行完成: message_id={message_id}, "
                 f"执行规则数={rules_executed}, 匹配规则数={rules_matched}, "
                 f"跳过邮件={final_result.should_skip}, 耗时={total_time:.3f}s"

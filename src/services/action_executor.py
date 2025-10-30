@@ -63,7 +63,7 @@ class SkipActionHandler(ActionHandler):
         try:
             message_id = email_data.get('message_id', 'unknown')
 
-            logger.info(f"执行跳过动作: message_id={message_id}")
+            logger.debug(f"执行跳过动作: message_id={message_id}")
 
             # 跳过动作的执行逻辑
             # 在规则引擎的上下文中，这个动作会告诉系统跳过对这封邮件的后续处理
@@ -73,7 +73,7 @@ class SkipActionHandler(ActionHandler):
             if action.action_config and isinstance(action.action_config, dict):
                 skip_reason = action.action_config.get('reason', skip_reason)
 
-            logger.info(f"邮件跳过处理: {skip_reason}")
+            logger.debug(f"邮件跳过处理: {skip_reason}")
 
             return self._create_result(
                 success=True,
@@ -116,13 +116,13 @@ class SetFieldActionHandler(ActionHandler):
             # 记录原始值
             old_value = email_data.get(field_name)
 
-            logger.info(
+            logger.debug(
                 f"执行设置字段动作: message_id={message_id}, {field_name}: {old_value} -> {field_value}")
 
             # 直接修改email_data字典
             email_data[field_name] = field_value
 
-            logger.info(
+            logger.debug(
                 f"字段设置成功: message_id={message_id}, {field_name}={field_value}")
 
             return self._create_result(
@@ -239,7 +239,7 @@ class ActionExecutor:
             result['execution_time'] = execution_time
             result['action_id'] = action.id
 
-            logger.info(
+            logger.debug(
                 f"动作执行完成: {action.action_type.value}, "
                 f"success={result.get('success')}, time={execution_time:.3f}s"
             )
@@ -268,7 +268,7 @@ class ActionExecutor:
             action_results = []
             should_skip = False
 
-            logger.info(f"开始批量执行动作: {len(actions)} 个动作")
+            logger.debug(f"开始批量执行动作: {len(actions)} 个动作")
 
             for action in actions:
                 try:
@@ -278,7 +278,7 @@ class ActionExecutor:
                     # 检查是否需要跳过后续处理
                     if result.get('should_skip', False):
                         should_skip = True
-                        logger.info(f"动作 {action.id} 设置了跳过标志，停止后续动作执行")
+                        logger.debug(f"动作 {action.id} 设置了跳过标志，停止后续动作执行")
                         break
 
                 except Exception as e:
@@ -308,7 +308,7 @@ class ActionExecutor:
                 if not action_result.get('success', True) and action_result.get('message'):
                     rule_result.add_error(action_result['message'])
 
-            logger.info(
+            logger.debug(
                 f"批量动作执行完成: {successful_actions}/{len(action_results)} 成功, "
                 f"跳过邮件={should_skip}, 耗时={total_time:.3f}s"
             )
@@ -392,7 +392,7 @@ class ActionExecutor:
         for key in self._execution_stats:
             self._execution_stats[key] = 0
 
-        logger.info("动作执行器统计信息已重置")
+        logger.debug("动作执行器统计信息已重置")
 
 
 # 全局动作执行器实例

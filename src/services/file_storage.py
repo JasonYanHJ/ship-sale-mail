@@ -46,19 +46,18 @@ class FileStorageService:
 
         # 格式化时间: YYYYMMDDHHMM
         time_prefix = date_received.strftime("%Y%m%d%H%M")
-        
+
         # 生成UUID确保文件名唯一性
         file_uuid = str(uuid.uuid4())
-        
+
         # 提取原始文件扩展名
         _, ext = os.path.splitext(original_filename)
-        
+
         # 生成最终文件名: 时间_邮件ID_UUID.扩展名
         filename = f"{time_prefix}_{email_id}_{file_uuid}{ext}"
 
         logger.debug(f"生成存储文件名: {filename} (原始文件名: {original_filename})")
         return filename
-
 
     async def save_attachment(self, email_id: str, filename: str, content: bytes,
                               date_received: Optional[datetime] = None) -> Dict[str, Any]:
@@ -92,7 +91,7 @@ class FileStorageService:
                 'created_at': datetime.now()
             }
 
-            logger.info(f"附件保存成功: {stored_filename} ({len(content)} bytes)")
+            logger.debug(f"附件保存成功: {stored_filename} ({len(content)} bytes)")
             return file_info
 
         except Exception as e:
