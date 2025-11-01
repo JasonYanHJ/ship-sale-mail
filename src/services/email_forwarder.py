@@ -33,6 +33,48 @@ class EmailForwarder:
         self.db_service = EmailDatabaseService()
         self.file_service = FileStorageService()
 
+    async def correct_forward_record(
+        self,
+        email_id: int,
+        to_addresses: List[str],
+        cc_addresses: Optional[List[str]] = None,
+        bcc_addresses: Optional[List[str]] = None,
+        additional_message: Optional[str] = None,
+        reply_to: List[str] = [],
+    ) -> bool:
+        """
+        邮件转发记录更正（创建新的转发记录，状态为'corrected'）
+
+        Args:
+            email_id: 邮件ID
+            to_addresses: 收件人列表
+            cc_addresses: 抄送人列表
+            bcc_addresses: 密送人列表
+            additional_message: 附加消息
+            reply_to: 回复人列表
+
+        Returns:
+            bool: 更正是否成功
+        """
+        try:
+            # 创建转发记录
+            forward_record = EmailForward(
+                email_id=email_id,
+                to_addresses=to_addresses,
+                cc_addresses=cc_addresses,
+                bcc_addresses=bcc_addresses,
+                additional_message=additional_message,
+                forward_status="corrected"
+            )
+
+            await self.db_service.save_email_forward(forward_record)
+            return True
+
+        except Exception as e:
+            logger.error(
+                f"Error correcting email forward record of email_id {email_id}: {str(e)}")
+            return False
+
     async def forward_email(
         self,
         email_id: int,

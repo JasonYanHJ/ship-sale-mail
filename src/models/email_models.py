@@ -131,7 +131,7 @@ class EmailForwardModel(BaseModel):
     cc_addresses: Optional[List[str]] = None
     bcc_addresses: Optional[List[str]] = None
     additional_message: Optional[str] = None
-    forward_status: str = "pending"  # pending, sent, failed
+    forward_status: str = "pending"  # pending, sent, failed, corrected
     error_message: Optional[str] = None
     forwarded_at: Optional[datetime] = None
     created_at: Optional[datetime] = None

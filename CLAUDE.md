@@ -164,7 +164,8 @@ Schema::create('email_forwards', function (Blueprint $table) {
     $table->text('cc_addresses')->nullable();
     $table->text('bcc_addresses')->nullable();
     $table->text('additional_message')->nullable();
-    $table->enum('forward_status', ['pending', 'sent', 'failed'])->default('pending');
+    $table->enum('forward_status', ['pending', 'sent', 'failed', 'corrected'])->default('pending');
+    // corrected: 手动更正转发对象，没有实际转发
     $table->text('error_message')->nullable();
     $table->timestamp('forwarded_at')->useCurrent();
     $table->timestamps();
