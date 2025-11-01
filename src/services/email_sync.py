@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import json
 from typing import List, Optional, Dict, Any, Tuple
 import asyncio
 
@@ -13,6 +14,7 @@ from ..services.email_extra_process.shipserv import process_shipserv_pdf, proces
 from ..models.database import db_manager
 import aiomysql
 from ..services.email_forwarder import forwarder
+import re
 
 logger = get_logger("email_sync")
 
@@ -234,6 +236,70 @@ class EmailSyncService:
                                       ] if dispatcher else [],
                         )
                     break
+            return
+        # ShipServ提醒类邮件，查询历史记录再次转发
+        if parsed_email.get('type') == 'REMINDER' and parsed_email.get('from_system') == 'ShipServ':
+            original_email_id = None
+            original_email_record = None
+
+            # 询价邮件的提醒邮件（2种）
+            match = re.search(r'^RFQ Reminder for (.*) from',
+                              parsed_email.get('subject')) \
+                or re.search(r'^Updated: New RFQ (.*) from',
+                             parsed_email.get('subject'))
+            if match:
+                async with db_manager.get_read_connection() as conn:
+                    async with conn.cursor(aiomysql.DictCursor) as cursor:
+                        sql = "SELECT id from emails WHERE subject LIKE %s"
+                        await cursor.execute(sql, f'New RFQ {match.group(1)} from %')
+                        email = await cursor.fetchone()
+                        logger.debug(email)
+                        if email:
+                            original_email_id = email['id']
+
+            # 订单邮件的提醒邮件（2种）
+            match = re.search(r'^Order Reminder for (.*) from',
+                              parsed_email.get('subject')) \
+                or re.search(r'^Updated Order (.*) from',
+                             parsed_email.get('subject'))
+            if match:
+                async with db_manager.get_read_connection() as conn:
+                    async with conn.cursor(aiomysql.DictCursor) as cursor:
+                        sql = "SELECT id from emails WHERE subject LIKE %s"
+                        await cursor.execute(sql, f'New Order {match.group(1)} from %')
+                        email = await cursor.fetchone()
+                        logger.debug(email)
+                        if email:
+                            original_email_id = email['id']
+
+            # 查询原始邮件的转发记录
+            if original_email_id:
+                async with db_manager.get_read_connection() as conn:
+                    async with conn.cursor(aiomysql.DictCursor) as cursor:
+                        sql = "SELECT * FROM email_forwards WHERE email_id = %s ORDER BY forwarded_at DESC"
+                        await cursor.execute(sql, original_email_id)
+                        original_email_record = await cursor.fetchone()
+                        logger.debug(original_email_record)
+
+            if original_email_record:
+                dispatcher = None
+                # 根据dispatcher_id获取转发员的信息
+                if parsed_email.get('dispatcher_id'):
+                    async with db_manager.get_read_connection() as conn:
+                        async with conn.cursor(aiomysql.DictCursor) as cursor:
+                            sql = "SELECT * FROM users WHERE id = %s"
+                            await cursor.execute(sql, (parsed_email.get('dispatcher_id'),))
+                            dispatcher = await cursor.fetchone()
+                # 根据转发记录转发这封提醒邮件
+                await forwarder.forward_email(
+                    email_id=email_id,
+                    to_addresses=json.loads(
+                        original_email_record['to_addresses']) if original_email_record['to_addresses'] else None,
+                    cc_addresses=json.loads(
+                        original_email_record['cc_addresses']) if original_email_record['cc_addresses'] else None,
+                    reply_to=[dispatcher['email']
+                              ] if dispatcher else [],
+                )
             return
         pass
 
