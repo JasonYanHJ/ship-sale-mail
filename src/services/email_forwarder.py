@@ -309,7 +309,7 @@ Reply-To: {', '.join(reply_to)}
 
                 insert_content = ""
                 if additional_message:
-                    insert_content += f'<div style="margin-bottom: 15px; padding: 10px; background-color: #e8f4f8; border-radius: 5px;"><p style="margin: 0; color: #2c5aa0;"><strong>转发说明:</strong> {additional_message}</p></div>'
+                    insert_content += f'<div style="margin-bottom: 15px; padding: 10px; background-color: #e8f4f8; border-radius: 5px;"><p style="margin: 0; color: #2c5aa0;"><strong>转发说明:</strong><br/>{additional_message.replace('\n', '<br>')}</p></div>'
 
                 insert_content += forward_content
 
