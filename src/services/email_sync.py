@@ -230,8 +230,8 @@ class EmailSyncService:
                             cc_addresses=['order@dan-marine.com']
                             + ([saler['l.email']]
                                if saler['l.email'] else [])
-                            + [dispatcher['email']
-                               ] if dispatcher else [],
+                            + ([dispatcher['email']
+                                ] if dispatcher else []),
                             reply_to=[dispatcher['email']
                                       ] if dispatcher else [],
                         )
