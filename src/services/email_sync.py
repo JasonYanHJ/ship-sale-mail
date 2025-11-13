@@ -11,6 +11,7 @@ from ..models.email_models import EmailModel, AttachmentModel, EmailSyncStats
 from ..utils.email_parser import EmailParser
 from ..utils.logger import get_logger
 from ..services.email_extra_process.shipserv import process_shipserv_pdf, process_shipserv_order_pdf
+from ..services.email_extra_process.procure import process_procure_pdf
 from ..models.database import db_manager
 import aiomysql
 from ..services.email_forwarder import forwarder
@@ -328,6 +329,32 @@ class EmailSyncService:
                         'version': 2,
                         'table_data': result['table_data'],
                         'section_data': result['section_data'],
+                        'meta_data': result['meta_data'],
+                    }
+                return
+            if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'Procure':
+                logger.debug(
+                    f"开始额外处理Procure邮件: message_id={parsed_email['message_id']}")
+
+                # 逐个处理附件
+                for attachment_model in attachment_models:
+                    file_path = attachment_model.file_path
+                    original_filename = attachment_model.original_filename
+
+                    # 跳过非询价pdf格式的附件
+                    if not original_filename.endswith('.pdf') or not original_filename.startswith('rfq_'):
+                        continue
+
+                    # 解析询价pdf数据
+                    result = process_procure_pdf(file_path)
+                    if not result:
+                        continue
+
+                    # 将数据保存在附件的extra字段中
+                    attachment_model.extra = {
+                        'type': 'Procure',
+                        'version': 1,
+                        'table_data': result['table_data'],
                         'meta_data': result['meta_data'],
                     }
                 return
