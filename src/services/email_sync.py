@@ -244,6 +244,8 @@ class EmailSyncService:
             match = re.search(r'^Case Closed .* (QS[TP]\d{9,10}[A-Za-z]{3})',
                               parsed_email.get('subject')) \
                 or re.search(r'^Message - .* (QS[TP]\d{9,10}[A-Za-z]{3})',
+                             parsed_email.get('subject')) \
+                or re.search(r'^PO confirmed .* (QS[TP]\d{9,10}[A-Za-z]{3})',
                              parsed_email.get('subject'))
             if match:
                 saler = None
