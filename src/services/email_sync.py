@@ -240,7 +240,7 @@ class EmailSyncService:
             return
         # Procure系统邮件
         if parsed_email.get('from_system') == 'Procure':
-            # 邮件主题含QSP、QST的case close和message类邮件，自动转发
+            # 邮件主题含QSP、QST的case close、message、PO confirmed类邮件，自动转发
             match = re.search(r'^Case Closed .* (QS[TP]\d{9,10}[A-Za-z]{3})',
                               parsed_email.get('subject')) \
                 or re.search(r'^Message - .* (QS[TP]\d{9,10}[A-Za-z]{3})',
@@ -267,14 +267,18 @@ class EmailSyncService:
                         logger.debug(f"销售数据：{saler}, 转发员数据：{dispatcher}")
 
                 if saler:
-                    # 转发给销售，同时抄送转发员和销售组长，回复对象设置为转发员
+                    # 转发给销售，同时抄送转发员和销售组长，回复对象设置为转发员；PO confirmed邮件需要额外抄送order邮箱
                     await forwarder.forward_email(
                         email_id=email_id,
                         to_addresses=[saler['email']],
-                        cc_addresses=(([saler['l.email']]
-                                      if saler['l.email'] else [])
-                                      + ([dispatcher['email']
-                                          ] if dispatcher else [])) or None,
+                        cc_addresses=(
+                            (['order@dan-marine.com']
+                             if parsed_email.get('type') == 'ORDER' else [])
+                            + ([saler['l.email']]
+                               if saler['l.email'] else [])
+                            + ([dispatcher['email']
+                                ] if dispatcher else [])
+                        ) or None,
                         reply_to=[dispatcher['email']
                                   ] if dispatcher else [],
                     )
