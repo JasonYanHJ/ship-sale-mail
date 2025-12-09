@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     # CORS配置
     cors_origins: str = "http://localhost:5173"
 
+    # 浏览器地址配置
+    playwright_browser_url: str
+
+    # Prodigy系统账号
+    prodigy_username: str
+    prodigy_password: str
+
     class Config:
         env_file = ".env"
         env_file_encoding = 'utf-8'

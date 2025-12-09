@@ -8,6 +8,8 @@ from .utils.logger import logger
 from .tasks.scheduler import mail_scheduler
 from .api.email_routes import router as email_router
 from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from .tasks.prodigy_token_manager import prodigy_token_manager
 
 
 @asynccontextmanager
@@ -34,6 +36,11 @@ async def lifespan(app: FastAPI):
         logger.error(f"数据库连接池初始化失败: {e}")
         raise
 
+    scheduler = AsyncIOScheduler()
+    scheduler.start()
+    prodigy_token_manager.start_refresh_prodigy_token_job(scheduler)
+    logger.info("全局调度器启动完成")
+
     # 启动邮件调度器
     try:
         mail_scheduler.start()
@@ -59,6 +66,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"邮件调度器停止失败: {e}")
 
     await db_manager.close_pool()
+    scheduler.shutdown(wait=True)
     logger.info("邮箱微服务已关闭")
 
 

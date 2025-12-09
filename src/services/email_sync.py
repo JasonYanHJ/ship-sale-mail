@@ -12,6 +12,7 @@ from ..utils.email_parser import EmailParser
 from ..utils.logger import get_logger
 from ..services.email_extra_process.shipserv import process_shipserv_pdf, process_shipserv_order_pdf
 from ..services.email_extra_process.procure import process_procure_pdf
+from ..services.email_extra_process.prodigy import process_prodigy_pdf
 from ..models.database import db_manager
 import aiomysql
 from ..services.email_forwarder import forwarder
@@ -178,7 +179,7 @@ class EmailSyncService:
             )
 
             # 8. 根据邮件类别额外处理邮件
-            await self._process_email_extra(parsed_email, attachment_models)
+            await self._process_email_extra(parsed_email, attachment_models, str(uid))
 
             # 9. 保存到数据库
             email_id, attachment_ids = await email_db_service.save_email_with_attachments(
@@ -398,8 +399,17 @@ class EmailSyncService:
             return
         pass
 
-    async def _process_email_extra(self, parsed_email: Dict[str, Any], attachment_models: List[AttachmentModel]):
+    async def _process_email_extra(self, parsed_email: Dict[str, Any], attachment_models: List[AttachmentModel], email_uid: str):
         try:
+            if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'Prodigy':
+                logger.debug(
+                    f"开始额外处理prodigy邮件: message_id={parsed_email['message_id']}")
+                match = re.search(
+                    r'Our Inquiry (RFQ-[^\-]*)-', parsed_email.get('subject'))
+                if match:
+                    logger.debug(f"rfq: {match.group(1)}")
+                    attachment_models.append(await process_prodigy_pdf(match.group(1), email_uid))
+                return
             if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'ShipServ':
                 logger.debug(
                     f"开始额外处理shipserv邮件: message_id={parsed_email['message_id']}")
