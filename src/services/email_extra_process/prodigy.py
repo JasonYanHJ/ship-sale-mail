@@ -49,6 +49,7 @@ async def downloadPdfAsAttachment(rfq_number: str, pdf_url, email_uid: str):
     async with async_playwright() as p:
         browser = await p.chromium.connect(settings.playwright_browser_url)
         context = await browser.new_context()
+        context.set_default_timeout(15000)
         page = await context.new_page()
         await page.goto(pdf_url)
 
@@ -86,7 +87,7 @@ async def downloadPdfAsAttachment(rfq_number: str, pdf_url, email_uid: str):
                 ],
             }
 
-            download_task = page.wait_for_event("download", timeout=10000)
+            download_task = page.wait_for_event("download")
             await page.locator('i[title="Click to export pdf"]').click()
             download = await download_task
 
@@ -116,8 +117,13 @@ async def downloadPdfAsAttachment(rfq_number: str, pdf_url, email_uid: str):
             return attachment_model
 
         except Exception as e:
-            logger.error(f"下载pdf出错: {e}")
-            raise e
+            if await page.locator('h4', has_text="no longer available").count() > 0:
+                logger.info(
+                    f"{rfq_number} is no longer available. 跳过询价单下载，仅同步邮件。")
+                return None
+            else:
+                logger.error(f"下载 pdf出错: {e}")
+                raise e
 
         finally:
             logger.debug("关闭浏览器")

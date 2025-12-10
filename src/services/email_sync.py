@@ -408,7 +408,9 @@ class EmailSyncService:
                     r'Our Inquiry (RFQ-[^\-]*)-', parsed_email.get('subject'))
                 if match:
                     logger.debug(f"rfq: {match.group(1)}")
-                    attachment_models.append(await process_prodigy_pdf(match.group(1), email_uid))
+                    attachment = await process_prodigy_pdf(match.group(1), email_uid)
+                    if attachment:
+                        attachment_models.append(attachment)
                 return
             if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'ShipServ':
                 logger.debug(
