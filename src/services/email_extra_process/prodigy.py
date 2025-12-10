@@ -55,6 +55,37 @@ async def downloadPdfAsAttachment(rfq_number: str, pdf_url, email_uid: str):
         try:
             await page.locator('input[type="password"]').fill("DANMARINE-CN")
             await page.locator('button').click()
+
+            _rfq = await page.evaluate("_rfq")
+            key_of_intersts = [
+                'rfqLineNo',
+                'itemDescription',
+                'makerRef',
+                'partNo',
+                'drawingNo',
+                'positionNo',
+                'componentName',
+                'maker',
+                'model',
+                'componentSerialNo',
+                'requestedQty',
+                'requestedUOM',
+                'offeredQty',
+                'offeredUOM',
+            ]
+            extra = {
+                'type': 'Prodigy',
+                'version': 1,
+                'meta_data': {
+                    'Description': _rfq['buyerRemarks'],
+                    'Buyer Remarks': _rfq['commentsToVendor']
+                },
+                'table_data': [
+                    {k: v for k, v in d.items() if k in key_of_intersts}
+                    for d in _rfq['items']
+                ],
+            }
+
             download_task = page.wait_for_event("download", timeout=10000)
             await page.locator('i[title="Click to export pdf"]').click()
             download = await download_task
@@ -74,7 +105,7 @@ async def downloadPdfAsAttachment(rfq_number: str, pdf_url, email_uid: str):
                 file_size=os.stat(file_path).st_size,
                 content_type="application/pdf",
                 content_disposition_type="attachment",
-                extra=None
+                extra=extra
             )
 
             if file_path.exists():
