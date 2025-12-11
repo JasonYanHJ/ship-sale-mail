@@ -77,6 +77,9 @@ def extract_table_data(pdf: PDF) -> list[list[list[str]]]:
             # 开始提取表格
             # 1. 裁剪页面到表格区域，对于第一页，使用items_bottom+4作为top
             if i+1 == items_line['chars'][0]['page_number']:
+                # "Items"字样在页面底部，裁剪大小为负数时，直接跳过这一页处理
+                if (items_line['bottom']+4) >= (page.height-36):
+                    continue
                 cropped_page = page.crop(
                     (16, items_line['bottom']+4, page.width-16, page.height-36))
             else:
