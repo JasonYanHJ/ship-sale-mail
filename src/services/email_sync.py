@@ -12,7 +12,7 @@ from ..utils.email_parser import EmailParser
 from ..utils.logger import get_logger
 from ..services.email_extra_process.shipserv import process_shipserv_pdf, process_shipserv_order_pdf
 from ..services.email_extra_process.procure import process_procure_pdf
-from ..services.email_extra_process.prodigy import process_prodigy_pdf
+from ..services.email_extra_process.prodigy import process_prodigy_rfq
 from ..models.database import db_manager
 import aiomysql
 from ..services.email_forwarder import forwarder
@@ -408,9 +408,8 @@ class EmailSyncService:
                     r'Our Inquiry (RFQ-[^\-]*)-', parsed_email.get('subject'))
                 if match:
                     logger.debug(f"rfq: {match.group(1)}")
-                    attachment = await process_prodigy_pdf(match.group(1), email_uid)
-                    if attachment:
-                        attachment_models.append(attachment)
+                    attachments = await process_prodigy_rfq(match.group(1), email_uid)
+                    attachment_models.extend(attachments)
                 return
             if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'ShipServ':
                 logger.debug(
