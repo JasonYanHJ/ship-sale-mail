@@ -239,6 +239,53 @@ class EmailSyncService:
                         )
                     break
             return
+        # Prodigy系统邮件
+        if parsed_email.get('from_system') == 'Prodigy':
+            if parsed_email.get('type') == 'REMINDER':
+                original_email_id = None
+                original_email_record = None
+
+                match = re.search(r': ([^:]*)$', parsed_email.get('subject'))
+
+                if match:
+                    async with db_manager.get_read_connection() as conn:
+                        async with conn.cursor(aiomysql.DictCursor) as cursor:
+                            sql = "SELECT id from emails WHERE from_system = 'Prodigy' AND `type` = 'RFQ' AND subject LIKE %s"
+                            await cursor.execute(sql, f'Request for quote: % RFQ-{match.group(1)}-%')
+                            email = await cursor.fetchone()
+                            logger.debug(email)
+                            if email:
+                                original_email_id = email['id']
+
+                # 查询原始邮件的转发记录
+                if original_email_id:
+                    async with db_manager.get_read_connection() as conn:
+                        async with conn.cursor(aiomysql.DictCursor) as cursor:
+                            sql = "SELECT * FROM email_forwards WHERE email_id = %s ORDER BY forwarded_at DESC"
+                            await cursor.execute(sql, original_email_id)
+                            original_email_record = await cursor.fetchone()
+                            logger.debug(original_email_record)
+
+                if original_email_record:
+                    dispatcher = None
+                    # 根据dispatcher_id获取转发员的信息
+                    if parsed_email.get('dispatcher_id'):
+                        async with db_manager.get_read_connection() as conn:
+                            async with conn.cursor(aiomysql.DictCursor) as cursor:
+                                sql = "SELECT * FROM users WHERE id = %s"
+                                await cursor.execute(sql, (parsed_email.get('dispatcher_id'),))
+                                dispatcher = await cursor.fetchone()
+                    # 根据转发记录转发这封提醒邮件
+                    await forwarder.forward_email(
+                        email_id=email_id,
+                        to_addresses=json.loads(
+                            original_email_record['to_addresses']) if original_email_record['to_addresses'] else None,
+                        cc_addresses=json.loads(
+                            original_email_record['cc_addresses']) if original_email_record['cc_addresses'] else None,
+                        reply_to=[dispatcher['email']
+                                  ] if dispatcher else [],
+                    )
+                return
         # Procure系统邮件
         if parsed_email.get('from_system') == 'Procure':
             # 邮件主题含QSP、QST的case close、message、PO confirmed类邮件，自动转发
