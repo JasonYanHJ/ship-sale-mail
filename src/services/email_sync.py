@@ -241,6 +241,7 @@ class EmailSyncService:
             return
         # Prodigy系统邮件
         if parsed_email.get('from_system') == 'Prodigy':
+            # 提醒类邮件根据对应询价邮件的记录进行自动转发
             if parsed_email.get('type') == 'REMINDER':
                 original_email_id = None
                 original_email_record = None
@@ -286,6 +287,47 @@ class EmailSyncService:
                                   ] if dispatcher else [],
                     )
                 return
+            # 订单类邮件或报价成功提交邮件，根据邮件正文的QSP、QST进行自动转发；注意订单邮件需要额外抄送order邮箱
+            if parsed_email.get('type') == 'ORDER' or parsed_email.get('subject').startswith('Quotation submitted successfully.'):
+                match = re.search(
+                    r'(QS[TP]\d{9,10}[A-Za-z]{3})', parsed_email.get('content_html'))
+
+                if match:
+                    saler = None
+                    dispatcher = None
+
+                    async with db_manager.get_read_connection() as conn:
+                        async with conn.cursor(aiomysql.DictCursor) as cursor:
+                            # 根据销售代码后三位（代表销售的缩写）确定对应销售以及其组长
+                            sql = "SELECT s.*, l.* FROM salers s LEFT JOIN salers l ON s.leader_id = l.id WHERE s.abbr = %s"
+                            await cursor.execute(sql, match[1][-3:])
+                            saler = await cursor.fetchone()
+
+                            # 根据dispatcher_id获取转发员的信息
+                            if parsed_email.get('dispatcher_id'):
+                                sql = "SELECT * FROM users WHERE id = %s"
+                                await cursor.execute(sql, (parsed_email.get('dispatcher_id'),))
+                                dispatcher = await cursor.fetchone()
+
+                            logger.debug(f"销售数据：{saler}, 转发员数据：{dispatcher}")
+
+                    if saler:
+                        # 转发给销售，同时抄送转发员和销售组长，回复对象设置为转发员；订单邮件需要额外抄送order邮箱
+                        await forwarder.forward_email(
+                            email_id=email_id,
+                            to_addresses=[saler['email']],
+                            cc_addresses=(
+                                (['order@dan-marine.com']
+                                 if parsed_email.get('type') == 'ORDER' else [])
+                                + ([saler['l.email']]
+                                   if saler['l.email'] else [])
+                                + ([dispatcher['email']
+                                    ] if dispatcher else [])
+                            ) or None,
+                            reply_to=[dispatcher['email']
+                                      ] if dispatcher else [],
+                        )
+                    return
         # Procure系统邮件
         if parsed_email.get('from_system') == 'Procure':
             # 邮件主题含QSP、QST的case close、message、PO confirmed类邮件，自动转发
@@ -330,7 +372,6 @@ class EmailSyncService:
                         reply_to=[dispatcher['email']
                                   ] if dispatcher else [],
                     )
-                    pass
                 return
             # 不含QSP、QST时，提醒类邮件（reminder、message、case close）根据提取的询价单号查询转发历史并自动转发
             original_email_id = None
