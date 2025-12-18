@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # Prodigy系统账号
     prodigy_username: str
     prodigy_password: str
+    # Vship系统账号
+    vship_username: str
+    vship_password: str
 
     class Config:
         env_file = ".env"
