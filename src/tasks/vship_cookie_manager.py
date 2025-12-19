@@ -14,6 +14,7 @@ class VshipCookieManager:
         self.cookie_b2b = ''
         self.cookie_session_id = ''
         self.cookie_sticky = ''
+        self.cookies = []
 
     def start_refresh_vship_cookie_job(self, scheduler):
         asyncio.create_task(self.refresh_vship_cookie_task())
@@ -46,13 +47,16 @@ class VshipCookieManager:
                 for cookie in all_cookies:
                     if cookie['name'] == 'b2b':
                         self.cookie_b2b = cookie['value']
+                        self.cookies.append(cookie)
                         logger.info(f"成功刷新Vship b2b cookie {cookie['value']}")
                     if cookie['name'] == 'ASP.NET_SessionId':
                         self.cookie_session_id = cookie['value']
+                        self.cookies.append(cookie)
                         logger.info(
                             f"成功刷新Vship session_id cookie {cookie['value']}")
                     if cookie['name'] == 'stickysession_b2b':
                         self.cookie_sticky = cookie['value']
+                        self.cookies.append(cookie)
                         logger.info(
                             f"成功刷新Vship sticky cookie {cookie['value']}")
 

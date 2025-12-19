@@ -13,6 +13,7 @@ from ..utils.logger import get_logger
 from ..services.email_extra_process.shipserv import process_shipserv_pdf, process_shipserv_order_pdf
 from ..services.email_extra_process.procure import process_procure_pdf
 from ..services.email_extra_process.prodigy import process_prodigy_rfq
+from ..services.email_extra_process.vship import process_vship_rfq
 from ..models.database import db_manager
 import aiomysql
 from ..services.email_forwarder import forwarder
@@ -489,6 +490,16 @@ class EmailSyncService:
 
     async def _process_email_extra(self, parsed_email: Dict[str, Any], attachment_models: List[AttachmentModel], email_uid: str):
         try:
+            if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'Vship':
+                logger.debug(
+                    f"开始额外处理vship邮件: message_id={parsed_email['message_id']}")
+                match = re.search(
+                    r'- RFQ_(\d{4}-\d{5}) -', parsed_email.get('subject'))
+                if match:
+                    logger.debug(f"rfq: {match.group(1)}")
+                    attachments = await process_vship_rfq(match.group(1), email_uid)
+                    attachment_models.extend(attachments)
+                return
             if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'Prodigy':
                 logger.debug(
                     f"开始额外处理prodigy邮件: message_id={parsed_email['message_id']}")
