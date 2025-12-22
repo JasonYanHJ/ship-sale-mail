@@ -99,7 +99,7 @@ class FileStorageService:
             logger.error(f"保存附件失败 {filename}: {e}")
             raise
 
-    async def _write_file_async(self, file_path: Path, content: bytes, retries: int = 2):
+    async def _write_file_async(self, file_path: Path, content: bytes, retries: int = 5):
         """
         异步安全写入文件：内置重试机制、fsync 和原子替换
         """

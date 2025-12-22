@@ -661,7 +661,7 @@ class EmailSyncService:
             except Exception as e:
                 logger.error(
                     f"处理附件失败 {attachment.get('filename', 'unknown')}: {e}")
-                continue
+                raise e
 
         return attachment_models
 
