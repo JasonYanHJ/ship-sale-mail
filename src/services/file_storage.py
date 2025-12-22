@@ -1,5 +1,6 @@
 import os
 import asyncio
+import time
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
@@ -98,15 +99,48 @@ class FileStorageService:
             logger.error(f"保存附件失败 {filename}: {e}")
             raise
 
-    async def _write_file_async(self, file_path: Path, content: bytes):
-        """异步写入文件"""
-        def write_file():
-            with open(file_path, 'wb') as f:
-                f.write(content)
+    async def _write_file_async(self, file_path: Path, content: bytes, retries: int = 2):
+        """
+        异步安全写入文件：内置重试机制、fsync 和原子替换
+        """
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # 在线程池中执行文件写入
+        # 使用 PID 和时间戳确保临时文件名唯一，防止并发冲突
+        temp_path = file_path.with_suffix(
+            f'.tmp_{os.getpid()}_{int(time.time())}')
+
+        def write_and_sync_logic():
+            # 这里在线程池中运行，处理具体的 I/O 逻辑
+            for attempt in range(retries + 1):
+                try:
+                    with open(temp_path, 'wb') as f:
+                        f.write(content)
+                        f.flush()            # 刷新 Python 缓冲区
+                        os.fsync(f.fileno())  # 强制穿透 WSL2/VHDX 写入 Windows 磁盘
+
+                    # 只有落盘成功才执行原子替换
+                    os.replace(temp_path, file_path)
+                    return  # 成功后退出循环
+
+                except (OSError, IOError) as e:
+                    # 如果还有重试机会
+                    if attempt < retries:
+                        logger.warning(f"磁盘写入抖动，准备第 {attempt + 1} 次重试: {e}")
+                        # 在线程池内简单 sleep，给 VHDX 分配空间留出一点缓冲时间
+                        time.sleep(1)
+                        continue
+
+                    # 彻底失败，尝试清理临时文件并抛出异常
+                    if temp_path.exists():
+                        try:
+                            os.remove(temp_path)
+                        except:
+                            pass
+                    raise e
+
+        # 在线程池中执行
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, write_file)
+        await loop.run_in_executor(None, write_and_sync_logic)
 
     async def delete_attachment(self, file_path: str) -> bool:
         """

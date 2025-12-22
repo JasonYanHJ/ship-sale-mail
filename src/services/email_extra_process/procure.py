@@ -35,7 +35,7 @@ def process_procure_pdf(pdf_path: str) -> dict:
 
             except Exception as e:
                 logger.error(
-                    f"Error processing page {page.page_number} in {pdf_path}: {e}")
+                    f"Error processing {pdf_path}: {e}")
 
     except Exception as e:
         logger.error(f"Error opening PDF {pdf_path}: {e}")
