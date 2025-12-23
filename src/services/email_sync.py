@@ -497,7 +497,7 @@ class EmailSyncService:
                     r'- RFQ_(\d{4}-\d{5}) -', parsed_email.get('subject'))
                 if match:
                     logger.debug(f"rfq: {match.group(1)}")
-                    attachments = await process_vship_rfq(match.group(1), email_uid)
+                    attachments = await process_vship_rfq(match.group(1), email_uid, parsed_email)
                     attachment_models.extend(attachments)
                 return
             if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'Prodigy':
@@ -507,7 +507,7 @@ class EmailSyncService:
                     r'Our Inquiry (RFQ-[^\-]*)-', parsed_email.get('subject'))
                 if match:
                     logger.debug(f"rfq: {match.group(1)}")
-                    attachments = await process_prodigy_rfq(match.group(1), email_uid)
+                    attachments = await process_prodigy_rfq(match.group(1), email_uid, parsed_email)
                     attachment_models.extend(attachments)
                 return
             if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'ShipServ':
@@ -638,7 +638,7 @@ class EmailSyncService:
                 # 保存附件文件
                 file_info = await file_storage.save_attachment(
                     email_uid, filename, content, parsed_email.get(
-                        'date_received')
+                        'date_sent')
                 )
 
                 # 创建附件模型

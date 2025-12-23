@@ -61,7 +61,7 @@ class FileStorageService:
         return filename
 
     async def save_attachment(self, email_id: str, filename: str, content: bytes,
-                              date_received: Optional[datetime] = None) -> Dict[str, Any]:
+                              date_sent: datetime) -> Dict[str, Any]:
         """
         保存附件到文件系统
 
@@ -69,7 +69,7 @@ class FileStorageService:
             email_id: 邮件ID
             filename: 原始文件名
             content: 文件内容
-            date_received: 邮件接收时间
+            date_sent: 邮件发送时间
 
         Returns:
             文件信息字典，包含存储路径、文件大小等信息
@@ -77,8 +77,9 @@ class FileStorageService:
         try:
             # 生成存储文件名
             stored_filename = self.generate_filename(
-                email_id, filename, date_received)
-            file_path = self.attachment_path / stored_filename
+                email_id, filename, date_sent)
+            sub_dir = date_sent.strftime('%Y/%m/%d')
+            file_path = self.attachment_path / sub_dir / stored_filename
 
             # 异步写入文件
             await self._write_file_async(file_path, content)

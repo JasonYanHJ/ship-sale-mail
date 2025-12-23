@@ -1,4 +1,6 @@
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict
 import requests
 from playwright.async_api import async_playwright
 import os
@@ -33,7 +35,7 @@ def getRfq(rfq_number: str):
         raise e
 
 
-async def downloadRfqAsAttachments(rfq_number: str, rfq_url, email_uid: str):
+async def downloadRfqAsAttachments(rfq_number: str, rfq_url, email_uid: str, date_sent: datetime):
     async with async_playwright() as p:
         browser = await p.chromium.connect(settings.playwright_browser_url)
         context = await browser.new_context()
@@ -53,7 +55,8 @@ async def downloadRfqAsAttachments(rfq_number: str, rfq_url, email_uid: str):
             filename = f"{rfq_number}.pdf"
             stored_filename = file_storage.generate_filename(
                 email_uid, filename)
-            file_path = DOWNLOAD_DIR / stored_filename
+            sub_dir = date_sent.strftime('%Y/%m/%d')
+            file_path = DOWNLOAD_DIR / sub_dir / stored_filename
             await download.save_as(file_path)
 
             # 创建附件模型
@@ -80,7 +83,12 @@ async def downloadRfqAsAttachments(rfq_number: str, rfq_url, email_uid: str):
             await browser.close()
 
 
-async def process_vship_rfq(rfq_number: str, email_uid: str):
+async def process_vship_rfq(rfq_number: str, email_uid: str, parsed_email: Dict[str, Any]):
     rfq_rsp_id = getRfq(rfq_number)
     logger.debug(f"rfq rsp_id: {rfq_rsp_id}")
-    return await downloadRfqAsAttachments(rfq_number, f'https://b2b.shipsure.com/QuoteList/GetDetailsPage?id={rfq_rsp_id}&sId=GLAS00058396', email_uid)
+    return await downloadRfqAsAttachments(
+        rfq_number,
+        f'https://b2b.shipsure.com/QuoteList/GetDetailsPage?id={rfq_rsp_id}&sId=GLAS00058396',
+        email_uid,
+        parsed_email.get('date_sent')
+    )
