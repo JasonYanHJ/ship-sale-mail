@@ -240,6 +240,47 @@ class EmailSyncService:
                         )
                     break
             return
+        # Vship系统邮件
+        if parsed_email.get('from_system') == 'Vship':
+            if parsed_email.get('type') == 'ORDER':
+                for attachment_model in attachment_models:
+                    if attachment_model.extra and attachment_model.extra['type'] == 'ORDER' and attachment_model.extra['code']:
+                        saler = None
+                        dispatcher = None
+
+                        async with db_manager.get_read_connection() as conn:
+                            async with conn.cursor(aiomysql.DictCursor) as cursor:
+                                # 根据销售代码后三位（代表销售的缩写）确定对应销售以及其组长
+                                sql = "SELECT s.*, l.* FROM salers s LEFT JOIN salers l ON s.leader_id = l.id WHERE s.abbr = %s"
+                                await cursor.execute(sql, (attachment_model.extra['code'][-3:],))
+                                saler = await cursor.fetchone()
+
+                                # 根据dispatcher_id获取转发员的信息
+                                if parsed_email.get('dispatcher_id'):
+                                    sql = "SELECT * FROM users WHERE id = %s"
+                                    await cursor.execute(sql, (parsed_email.get('dispatcher_id'),))
+                                    dispatcher = await cursor.fetchone()
+
+                                logger.debug(
+                                    f"销售数据：{saler}, 转发员数据：{dispatcher}")
+
+                        if saler:
+                            # 转发给销售，同时抄送order公共邮箱、转发员和销售组长，回复对象设置为转发员
+                            # Vship订单转发时需要添加额外文本信息提醒财务核对款项
+                            await forwarder.forward_email(
+                                email_id=email_id,
+                                to_addresses=[saler['email']],
+                                cc_addresses=['order@dan-marine.com']
+                                + ([saler['l.email']]
+                                   if saler['l.email'] else [])
+                                + ([dispatcher['email']
+                                    ] if dispatcher else []),
+                                reply_to=[dispatcher['email']
+                                          ] if dispatcher else [],
+                                additional_message='Please check with finance department prior to processing.',
+                            )
+                        break
+                return
         # Prodigy系统邮件
         if parsed_email.get('from_system') == 'Prodigy':
             # 提醒类邮件根据对应询价邮件的记录进行自动转发
@@ -583,6 +624,31 @@ class EmailSyncService:
                     attachment_model.extra = {
                         'type': 'ORDER',
                         'from': 'ShipServ',
+                        'version': 1,
+                        'code': result['code'],
+                    }
+                return
+            if parsed_email.get('type') == 'ORDER' and parsed_email.get('from_system') == 'Vship':
+                logger.debug(
+                    f"开始额外处理vship订单邮件: message_id={parsed_email['message_id']}")
+
+                # 逐个处理附件
+                for attachment_model in attachment_models:
+                    file_path = attachment_model.file_path
+
+                    # 跳过非pdf附件
+                    if not file_path.endswith('.pdf'):
+                        continue
+
+                    # 解析询价pdf数据
+                    result = process_shipserv_order_pdf(file_path)
+                    if not result:
+                        continue
+
+                    # 将数据保存在附件的extra字段中
+                    attachment_model.extra = {
+                        'type': 'ORDER',
+                        'from': 'Vship',
                         'version': 1,
                         'code': result['code'],
                     }
