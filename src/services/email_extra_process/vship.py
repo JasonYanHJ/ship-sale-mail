@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
@@ -35,6 +36,46 @@ def getRfq(rfq_number: str):
         raise e
 
 
+async def getRfqExtraData(page, rfq_url: str):
+    extra_data = {
+        'meta_data': None,
+        'table_data': None,
+    }
+
+    async def wait_for_meta_data():
+        async with page.expect_response(lambda r: "/QuoteList/LoadCompLines?rsp_id" in r.url) as resp_info:
+            response = await resp_info.value
+            meta_data = (await response.json())['Data'][0]
+            extra_data['meta_data'] = {
+                'Title': (await page.locator('.quoteHeaderTopRow b').inner_text())[13:],
+                'For Component': meta_data['CompName'],
+                'Maker': meta_data['CompManuf'],
+                'Serial No.': meta_data['CompSerial'],
+                'Component Notes': meta_data['CompNotes'],
+                'Notes': (await page.locator('.quoteOrdNotes').inner_text()).replace('\xa0', ' '),
+            }
+            return
+
+    async def wait_for_table_data():
+        async with page.expect_response(lambda r: "/QuoteList/LoadQuoteLines?PRTID" in r.url) as resp_info:
+            response = await resp_info.value
+            table_data = (await response.json())['Data']
+            target_keys = ["RodLineNo", "Enquired", "UnitType", "PartName",
+                           "MakersRef", "DrawingPos", "SparePartNotes"]
+            extra_data['table_data'] = [
+                {k: d[k] for k in target_keys if k in d} for d in table_data]
+            return
+
+    task1 = asyncio.create_task(wait_for_meta_data())
+    task2 = asyncio.create_task(wait_for_table_data())
+
+    await page.goto(rfq_url)
+
+    await asyncio.gather(task1, task2)
+
+    return extra_data
+
+
 async def downloadRfqAsAttachments(rfq_number: str, rfq_url, email_uid: str, date_sent: datetime):
     async with async_playwright() as p:
         browser = await p.chromium.connect(settings.playwright_browser_url)
@@ -42,7 +83,9 @@ async def downloadRfqAsAttachments(rfq_number: str, rfq_url, email_uid: str, dat
         context.set_default_timeout(15000)
         await context.add_cookies(vship_cookie_manager.cookies)
         page = await context.new_page()
-        await page.goto(rfq_url)
+
+        # 前往询价单页面，并通过监听请求的响应获取rfq数据
+        extra_data = await getRfqExtraData(page, rfq_url)
 
         attachment_models = []
 
@@ -68,7 +111,11 @@ async def downloadRfqAsAttachments(rfq_number: str, rfq_url, email_uid: str, dat
                 file_size=os.stat(file_path).st_size,
                 content_type="application/pdf",
                 content_disposition_type="attachment",
-                extra=None
+                extra={
+                    'type': 'Vship',
+                    'version': 1,
+                    **extra_data
+                }
             ))
 
             return attachment_models
