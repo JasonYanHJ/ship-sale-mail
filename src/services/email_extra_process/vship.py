@@ -23,7 +23,7 @@ def getRfq(rfq_number: str):
         payload = f"take=1000&skip=0&page=1&pageSize=1000&filter%5Blogic%5D=and&filter%5Bfilters%5D%5B0%5D%5Bfield%5D=ORD_OrderNo&filter%5Bfilters%5D%5B0%5D%5Boperator%5D=eq&filter%5Bfilters%5D%5B0%5D%5Bvalue%5D={rfq_number}"
         headers = {
             'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Cookie': f'stickysession_b2b={vship_cookie_manager.cookie_sticky}; b2b={vship_cookie_manager.cookie_b2b}; ASP.NET_SessionId={vship_cookie_manager.cookie_session_id}'
+            'Cookie': f'stickysession_b2b={vship_cookie_manager.cookies['sticky']['value']}; b2b={vship_cookie_manager.cookies['b2b']['value']}; ASP.NET_SessionId={vship_cookie_manager.cookies['session_id']['value']}'
         }
 
         response = requests.request("POST", url, headers=headers, data=payload)
@@ -81,7 +81,7 @@ async def downloadRfqAsAttachments(rfq_number: str, rfq_url, email_uid: str, dat
         browser = await p.chromium.connect(settings.playwright_browser_url)
         context = await browser.new_context()
         context.set_default_timeout(15000)
-        await context.add_cookies(vship_cookie_manager.cookies)
+        await context.add_cookies(list(vship_cookie_manager.cookies.values()))
         page = await context.new_page()
 
         # 前往询价单页面，并通过监听请求的响应获取rfq数据
