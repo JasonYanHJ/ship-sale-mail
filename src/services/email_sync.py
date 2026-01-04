@@ -240,6 +240,45 @@ class EmailSyncService:
                         )
                     break
             return
+        # BSM系统邮件
+        if parsed_email.get('from_system') == 'BSM':
+            if parsed_email.get('type') == 'ORDER':
+                match = re.search(
+                    r'(QS[TP]\d{9,10}[A-Za-z]{3})', parsed_email.get('content_html'))
+
+                if match:
+                    saler = None
+                    dispatcher = None
+
+                    async with db_manager.get_read_connection() as conn:
+                        async with conn.cursor(aiomysql.DictCursor) as cursor:
+                            # 根据销售代码后三位（代表销售的缩写）确定对应销售以及其组长
+                            sql = "SELECT s.*, l.* FROM salers s LEFT JOIN salers l ON s.leader_id = l.id WHERE s.abbr = %s"
+                            await cursor.execute(sql, match[1][-3:])
+                            saler = await cursor.fetchone()
+
+                            # 根据dispatcher_id获取转发员的信息
+                            if parsed_email.get('dispatcher_id'):
+                                sql = "SELECT * FROM users WHERE id = %s"
+                                await cursor.execute(sql, (parsed_email.get('dispatcher_id'),))
+                                dispatcher = await cursor.fetchone()
+
+                            logger.debug(f"销售数据：{saler}, 转发员数据：{dispatcher}")
+
+                    if saler:
+                        # 转发给销售，同时抄送order公共邮箱、转发员和销售组长，回复对象设置为转发员
+                        await forwarder.forward_email(
+                            email_id=email_id,
+                            to_addresses=[saler['email']],
+                            cc_addresses=['order@dan-marine.com']
+                            + ([saler['l.email']]
+                               if saler['l.email'] else [])
+                            + ([dispatcher['email']
+                                ] if dispatcher else []),
+                            reply_to=[dispatcher['email']
+                                      ] if dispatcher else [],
+                        )
+                    return
         # Vship系统邮件
         if parsed_email.get('from_system') == 'Vship':
             if parsed_email.get('type') == 'ORDER':
