@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from .tasks.prodigy_token_manager import prodigy_token_manager
 from .tasks.vship_cookie_manager import vship_cookie_manager
+from .tasks.bsm_cookie_manager import bsm_cookie_manager
 
 
 @asynccontextmanager
@@ -41,6 +42,7 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     prodigy_token_manager.start_refresh_prodigy_token_job(scheduler)
     vship_cookie_manager.start_refresh_vship_cookie_job(scheduler)
+    bsm_cookie_manager.start_refresh_bsm_cookie_job(scheduler)
     logger.info("全局调度器启动完成")
 
     # 启动邮件调度器

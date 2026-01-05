@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # Vship系统账号
     vship_username: str
     vship_password: str
+    # BSM系统账号
+    bsm_username: str
+    bsm_password: str
 
     class Config:
         env_file = ".env"
