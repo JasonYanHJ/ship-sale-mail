@@ -14,6 +14,7 @@ from ..services.email_extra_process.shipserv import process_shipserv_pdf, proces
 from ..services.email_extra_process.procure import process_procure_pdf
 from ..services.email_extra_process.prodigy import process_prodigy_rfq
 from ..services.email_extra_process.vship import process_vship_rfq
+from ..services.email_extra_process.bsm import process_bsm_rfq
 from ..models.database import db_manager
 import aiomysql
 from ..services.email_forwarder import forwarder
@@ -635,6 +636,21 @@ class EmailSyncService:
                     logger.debug(f"rfq: {match.group(1)}")
                     attachments = await process_prodigy_rfq(match.group(1), email_uid, parsed_email)
                     attachment_models.extend(attachments)
+                return
+            if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'BSM':
+                logger.debug(
+                    f"开始额外处理bsm邮件: message_id={parsed_email['message_id']}")
+                match = re.search(
+                    r'RFQ Received - ([^,]*),', parsed_email.get('subject'))
+                if match:
+                    if len(attachment_models) > 0:
+                        result = await process_bsm_rfq(match.group(1))
+                        attachment_models[0].extra = {
+                            'type': 'BSM',
+                            'version': 1,
+                            'table_data': result['table_data'],
+                            'meta_data': result['meta_data'],
+                        }
                 return
             if parsed_email.get('type') == 'RFQ' and parsed_email.get('from_system') == 'ShipServ':
                 logger.debug(
