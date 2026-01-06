@@ -302,30 +302,32 @@ Reply-To: {', '.join(reply_to)}
             body_pattern = re.compile(r'(<body[^>]*>)', re.IGNORECASE)
             body_match = body_pattern.search(html_content)
 
+            # 确定插入位置
+            insert_position = 0
             if body_match:
-                # 找到body标签，准备插入内容
-                html_header = forward_header.replace('\n', '<br>')
-                forward_content = f'<pre style="font-family: monospace; margin: 10px 0; padding: 10px; background-color: #f5f5f5; border-left: 3px solid #ccc;">{html_header}</pre>'
-
-                insert_content = ""
-                if additional_message:
-                    insert_content += f'<div style="margin-bottom: 15px; padding: 10px; background-color: #e8f4f8; border-radius: 5px;"><p style="margin: 0; color: #2c5aa0;">{additional_message.replace('\n', '<br>')}</p></div>'
-
-                insert_content += forward_content
-
-                # 在body标签后插入内容
                 insert_position = body_match.end()
-                modified_html = (
-                    html_content[:insert_position] +
-                    insert_content +
-                    html_content[insert_position:]
-                )
-                return modified_html
             else:
-                # 没有找到body标签，直接返回原内容，不插入转发头信息
+                # 没有找到body标签，把转发头信息插入在最开始位置，保持insert_position = 0
                 logger.warning(
-                    "No body tag found in HTML content, skipping forward header insertion")
-                return html_content
+                    "No body tag found in HTML content, insert forward header at the beginning")
+
+            # 准备插入内容
+            html_header = forward_header.replace('\n', '<br>')
+            forward_content = f'<pre style="font-family: monospace; margin: 10px 0; padding: 10px; background-color: #f5f5f5; border-left: 3px solid #ccc;">{html_header}</pre>'
+
+            insert_content = ""
+            if additional_message:
+                insert_content += f'<div style="margin-bottom: 15px; padding: 10px; background-color: #e8f4f8; border-radius: 5px;"><p style="margin: 0; color: #2c5aa0;">{additional_message.replace('\n', '<br>')}</p></div>'
+
+            insert_content += forward_content
+
+            # 插入内容
+            modified_html = (
+                html_content[:insert_position] +
+                insert_content +
+                html_content[insert_position:]
+            )
+            return modified_html
 
         except Exception as e:
             logger.error(f"Error inserting HTML forward content: {str(e)}")
