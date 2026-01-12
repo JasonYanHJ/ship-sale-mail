@@ -123,7 +123,8 @@ async def downloadRfqAsAttachments(rfq_number: str, rfq_url, email_uid: str, dat
             filename = f"{rfq_number}.xls"
             stored_filename = file_storage.generate_filename(
                 email_uid, filename)
-            file_path = DOWNLOAD_DIR / stored_filename
+            sub_dir = date_sent.strftime('%Y/%m/%d')
+            file_path = DOWNLOAD_DIR / sub_dir / stored_filename
             await download.save_as(file_path)
 
             # 创建附件模型
