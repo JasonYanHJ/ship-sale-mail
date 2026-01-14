@@ -4,6 +4,9 @@ import os
 
 
 class Settings(BaseSettings):
+    # Laravel URL
+    laravel_url: str
+
     # 邮箱配置
     email_username: str
     email_password: str

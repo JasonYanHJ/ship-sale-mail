@@ -19,6 +19,7 @@ from ..models.database import db_manager
 import aiomysql
 from ..services.email_forwarder import forwarder
 import re
+from ..services.email_rfq_auto_forward import process_rfq_auto_forward
 
 logger = get_logger("email_sync")
 
@@ -204,6 +205,36 @@ class EmailSyncService:
             raise
 
     async def _process_auto_forward(self, email_id: int, parsed_email: Dict[str, Any], attachment_models: List[AttachmentModel]):
+        # 询价邮件的自动转发逻辑
+        if parsed_email.get('type') == 'RFQ':
+            saler = None
+            dispatcher = None
+
+            saler = await process_rfq_auto_forward(email_id, parsed_email, attachment_models)
+            if saler:
+                # 根据dispatcher_id获取转发员的信息
+                async with db_manager.get_read_connection() as conn:
+                    if parsed_email.get('dispatcher_id'):
+                        async with conn.cursor(aiomysql.DictCursor) as cursor:
+                            sql = "SELECT * FROM users WHERE id = %s"
+                            await cursor.execute(sql, (parsed_email.get('dispatcher_id'),))
+                            dispatcher = await cursor.fetchone()
+                        logger.debug(f"转发员数据：{dispatcher}")
+
+                # 转发给销售，同时抄送转发员和销售组长，回复对象设置为转发员
+                # 注意此处saler的类型与其他saler略有不同，是由laravel返回的数据
+                await forwarder.forward_email(
+                    email_id=email_id,
+                    to_addresses=[saler['email']],
+                    cc_addresses=[]
+                    + ([saler['leader']['email']]
+                        if saler['leader'] else [])
+                    + ([dispatcher['email']
+                        ] if dispatcher else []),
+                    reply_to=[dispatcher['email']
+                              ] if dispatcher else [],
+                )
+                return
         # 订单邮件，如果有成功解析出销售代码，则系统自动转发
         if parsed_email.get('type') == 'ORDER' and parsed_email.get('from_system') == 'ShipServ':
             for attachment_model in attachment_models:
