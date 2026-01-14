@@ -25,6 +25,13 @@ async def process_rfq_auto_forward(email_id: int, parsed_email: Dict[str, Any], 
     salers = (await fetch_salers_data())['data']
 
     auto_forward_saler = get_auto_forward_saler(salers, extra_text)
+    if not auto_forward_saler:
+        return None
+
+    # 根据物料组的特殊规则再次转换销售对象
+    auto_forward_saler = reassign_saler(
+        auto_forward_saler, salers, parsed_email)
+
     return auto_forward_saler
 
 
@@ -92,3 +99,51 @@ def get_auto_forward_saler(salers: List[Dict[str, Any]], text: str):
                 logger.debug(f"找到匹配的销售：{saler['name']}，自动转发标签：{tag['name']}")
                 return saler
     return None
+
+
+def reassign_saler(s, salers, email):
+    # 只特殊处理 Duke Wang 的情况，其余情况原样返回
+    if s["name"] != "Duke Wang":
+        return s
+
+    # 负责名单配置：姓名 -> [(字段, 关键词)]
+    responsibilities = {
+        "Colin Zhu": [
+            ("subject", "Columbia"),
+            ("subject", "OSM"),
+            ("subject", "WSM global service"),
+            ("subject", "Synergy Denmark A/S"),
+            ("subject", "Wallem"),
+            ("subject", "Thome Ship"),
+        ],
+        "Bella Chen": [
+            ("subject", "Fleet"),
+            ("subject", "FML"),
+            ("subject", "Teekay"),
+            ("subject", "Scorpio"),
+            ("from_system", "Procure"),
+        ],
+        "Lorna Wang": [
+            ("subject", "Anglo-eastern"),
+            ("subject", "Seaspan"),
+            ("subject", "Optimum"),
+        ],
+    }
+
+    # 遍历配置项进行匹配
+    for name, rules in responsibilities.items():
+        # 检查是否满足任一规则
+        for field, keyword in rules:
+            # 获取邮件对应字段的值，并进行不区分大小写的包含匹配
+            email_field_value = email.get(field, "")
+            if email_field_value and keyword.lower() in email_field_value.lower():
+                # 从销售列表中找到匹配的名字并返回
+                target_saler = next(
+                    (saler for saler in salers if saler.get("name") == name), None)
+                if target_saler:
+                    return target_saler
+                else:
+                    logger.error(f"根据物料组的特殊规则进行转换，但是未找到被转换销售{name}")
+
+    # 如果没有匹配到任何规则，返回原始销售
+    return s
