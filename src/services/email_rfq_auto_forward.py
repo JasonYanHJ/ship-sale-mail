@@ -19,6 +19,8 @@ async def process_rfq_auto_forward(email_id: int, parsed_email: Dict[str, Any], 
         return
 
     extra_text = get_extra_text(attachment_models)
+    if not extra_text:
+        return None
 
     salers = (await fetch_salers_data())['data']
 
