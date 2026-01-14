@@ -88,7 +88,7 @@ def get_auto_forward_saler(salers: List[Dict[str, Any]], text: str):
         for tag in saler['tags']:
             if not tag['pivot']['auto_forward']:
                 continue
-            if tag['name'] in text:
+            if tag['name'].lower() in text:
                 logger.debug(f"找到匹配的销售：{saler['name']}，自动转发标签：{tag['name']}")
                 return saler
     return None
