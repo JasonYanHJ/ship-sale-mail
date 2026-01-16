@@ -251,7 +251,7 @@ From: {original_from}
 Date: {original_date}
 Subject: {original_subject}
 To: {original_to}
-Reply-To: {', '.join(reply_to)}
+Sender-Name: {', '.join(reply_to)}
 """
 
             if original_cc:
