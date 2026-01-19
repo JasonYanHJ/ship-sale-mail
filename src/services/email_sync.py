@@ -405,7 +405,8 @@ class EmailSyncService:
                 original_email_id = None
                 original_email_record = None
 
-                match = re.search(r': ([^:]*)$', parsed_email.get('subject'))
+                match = re.search(r'^Reminder .* : ([^:]*)$', parsed_email.get('subject'))\
+                    or re.search(r'^Request for quote Cancelled .* : RFQ-([^\-]*)', parsed_email.get('subject'))
 
                 if match:
                     async with db_manager.get_read_connection() as conn:
