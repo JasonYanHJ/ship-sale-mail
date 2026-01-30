@@ -93,7 +93,7 @@ async def fetch_salers_data():
 
 def get_auto_forward_saler(salers: List[Dict[str, Any]], text: str):
     # 如果六位IMPA码的个数有6个及以上，认定是物料组负责的邮件，组长是Duke Wang
-    if len(re.findall(r'[^a-zA-Z0-9\-\.](?<!dra?w.{0,8})\d{6}[^a-zA-Z0-9\-\.]', text, re.IGNORECASE)) >= 6:
+    if len(re.findall(r'[^a-zA-Z0-9\-\.](?<!dra?w.{0,8}|\d )\d{6}[^a-zA-Z0-9\-\.](?!\d)', text, re.IGNORECASE)) >= 6:
         return next((saler for saler in salers if saler.get("name") == "Duke Wang"), None)
 
     for saler in salers:
