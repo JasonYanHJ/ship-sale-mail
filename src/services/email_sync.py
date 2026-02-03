@@ -258,6 +258,12 @@ class EmailSyncService:
                             logger.debug(f"销售数据：{saler}, 转发员数据：{dispatcher}")
 
                     if saler:
+                        # 部分客户的订单邮件需要添加核查提醒
+                        clients = ['Columbia', 'OSM', 'Thome',
+                                   'OT Ship Management', 'Klaveness Ship Management']
+                        additional_message = 'Please check with finance department prior to processing.' \
+                            if any(client.lower() in parsed_email.get('subject').lower() for client in clients) else None
+
                         # 转发给销售，同时抄送order公共邮箱、转发员和销售组长，回复对象设置为转发员
                         await forwarder.forward_email(
                             email_id=email_id,
@@ -269,6 +275,7 @@ class EmailSyncService:
                                 ] if dispatcher else []),
                             reply_to=[dispatcher['email']
                                       ] if dispatcher else [],
+                            additional_message=additional_message,
                         )
                     break
             return
