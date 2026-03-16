@@ -120,18 +120,19 @@ def reassign_saler(s, salers, email):
             ("subject", "Synergy Denmark A/S"),
             ("subject", "Wallem"),
             ("subject", "Thome Ship"),
-        ],
-        "Bella Chen": [
-            ("subject", "Fleet"),
-            ("subject", "FML"),
-            ("subject", "Teekay"),
-            ("subject", "Scorpio"),
-            ("from_system", "Procure"),
+            ("subject", "Berge Bulk"),
+            ("subject", " Chellaram Shipping"),
         ],
         "Lorna Wang": [
             ("subject", "Anglo-eastern"),
             ("subject", "Seaspan"),
             ("subject", "Optimum"),
+            ("subject", "Norbulk Shipping"),
+            ("subject", "NYK Shipmanagement"),
+            ("subject", "Scorpio"),
+            ("subject", "Teekay"),
+            ("from_system", "Procure"),
+            ("from_system", "BSM"),
         ],
     }
 
