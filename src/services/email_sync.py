@@ -233,6 +233,9 @@ class EmailSyncService:
                         ] if dispatcher else []),
                     reply_to=[dispatcher['email']
                               ] if dispatcher else [],
+                    # Procure询价邮件额外添加提醒
+                    additional_message="该系统敏感船较多，请在报价之前先查询IMO号，如果涉敏，请内部沟通后再处理" if parsed_email.get(
+                        'from_system') == 'Procure' else None
                 )
                 return
         # 订单邮件，如果有成功解析出销售代码，则系统自动转发
@@ -632,6 +635,9 @@ class EmailSyncService:
                         original_email_record['cc_addresses']) if original_email_record['cc_addresses'] else None,
                     reply_to=[dispatcher['email']
                               ] if dispatcher else [],
+                    # Procure remind邮件额外添加提醒
+                    additional_message="该系统敏感船较多，请在报价之前先查询IMO号，如果涉敏，请内部沟通后再处理" if parsed_email.get(
+                        'type') == 'REMINDER' else None
                 )
             return
         # ShipServ提醒类邮件，查询历史记录再次转发
