@@ -116,7 +116,6 @@ def reassign_saler(s, salers, email):
         "Colin Zhu": [
             ("subject", "Columbia"),
             ("subject", "OSM"),
-            ("subject", "Synergy Denmark A/S"),
             ("subject", "Wallem"),
             ("subject", "Thome Ship"),
             ("subject", "Berge Bulk"),
