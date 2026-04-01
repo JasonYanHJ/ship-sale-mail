@@ -131,7 +131,6 @@ def reassign_saler(s, salers, email):
             ("subject", "Teekay"),
             ("subject", "WSM global service"),
             ("from_system", "Procure"),
-            ("from_system", "BSM"),
         ],
     }
 
