@@ -115,7 +115,8 @@ def reassign_saler(s, salers, email):
     responsibilities = {
         "Colin Zhu": [
             ("subject", "Columbia"),
-            ("subject", "OSM"),
+            ("subject", "OSM Maritime"),
+            ("subject", "OSM Ship"),
             ("subject", "Wallem"),
             ("subject", "Thome Ship"),
             ("subject", "Berge Bulk"),
