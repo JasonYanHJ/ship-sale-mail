@@ -221,6 +221,16 @@ class EmailSyncService:
                             dispatcher = await cursor.fetchone()
                         logger.debug(f"转发员数据：{dispatcher}")
 
+                # 自动转发前补充系统类业务提醒：
+                # Procure 询价统一提示先做涉敏核查；
+                # ShipServ 询价如果主题命中 Ugland，则额外强调货期与品质要求。
+                subject = (parsed_email.get('subject') or '').lower()
+                additional_message = None
+                if parsed_email.get('from_system') == 'Procure':
+                    additional_message = "该系统敏感船较多，请在报价之前先查询IMO号，如果涉敏，请内部沟通后再处理"
+                elif parsed_email.get('from_system') == 'ShipServ' and 'ugland' in subject:
+                    additional_message = "Ugland大船东，务必遵守货期，高品质。"
+
                 # 转发给销售，同时抄送转发员和销售组长，回复对象设置为转发员
                 # 注意此处saler的类型与其他saler略有不同，是由laravel返回的数据
                 await forwarder.forward_email(
@@ -233,9 +243,7 @@ class EmailSyncService:
                         ] if dispatcher else []),
                     reply_to=[dispatcher['email']
                               ] if dispatcher else [],
-                    # Procure询价邮件额外添加提醒
-                    additional_message="该系统敏感船较多，请在报价之前先查询IMO号，如果涉敏，请内部沟通后再处理" if parsed_email.get(
-                        'from_system') == 'Procure' else None
+                    additional_message=additional_message
                 )
                 return
         # 订单邮件，如果有成功解析出销售代码，则系统自动转发
