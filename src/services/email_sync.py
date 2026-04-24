@@ -270,7 +270,7 @@ class EmailSyncService:
 
                     if saler:
                         # 部分客户的订单邮件需要添加核查提醒
-                        clients = ['Columbia', 'OSM', 'Thome',
+                        clients = ['Columbia Shipmanagement', 'OSM', 'Thome',
                                    'OT Ship Management', 'Klaveness Ship Management']
                         additional_message = 'Please check with finance department prior to processing.' \
                             if any(client.lower() in parsed_email.get('subject').lower() for client in clients) else None
