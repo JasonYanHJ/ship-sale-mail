@@ -26,33 +26,33 @@ class EmailParser:
         """解析邮件头信息"""
         try:
             # 解析发件人
-            sender_raw = msg.get('From', '')
+            sender_raw = EmailParser._decode_header(msg.get('From', ''))
             sender = email.utils.parseaddr(sender_raw)[1] if sender_raw else ''
 
             # 解析收件人
             recipients = []
-            to_header = msg.get('To', '')
+            to_header = EmailParser._decode_header(msg.get('To', ''))
             if to_header:
                 recipients.extend(
                     [addr[1] for addr in email.utils.getaddresses([to_header])])
 
             # 解析抄送
             cc = []
-            cc_header = msg.get('Cc', '')
+            cc_header = EmailParser._decode_header(msg.get('Cc', ''))
             if cc_header:
                 cc.extend([addr[1]
                           for addr in email.utils.getaddresses([cc_header])])
 
             # 解析密送
             bcc = []
-            bcc_header = msg.get('Bcc', '')
+            bcc_header = EmailParser._decode_header(msg.get('Bcc', ''))
             if bcc_header:
                 bcc.extend([addr[1]
                            for addr in email.utils.getaddresses([bcc_header])])
 
             # 解析日期
             date_sent = None
-            date_header = msg.get('Date', '')
+            date_header = EmailParser._decode_header(msg.get('Date', ''))
             if date_header:
                 try:
                     date_tuple = email.utils.parsedate_tz(date_header)
@@ -67,7 +67,9 @@ class EmailParser:
             subject = EmailParser._clean_header_text(subject)
             
             # 解析Message-ID并清理格式
-            message_id = EmailParser._clean_header_text(msg.get('Message-ID', ''))
+            message_id = EmailParser._clean_header_text(
+                EmailParser._decode_header(msg.get('Message-ID', ''))
+            )
 
             return {
                 'message_id': message_id,
@@ -96,9 +98,14 @@ class EmailParser:
                 # 多部分邮件
                 for part in msg.walk():
                     content_type = part.get_content_type()
-                    content_disposition = part.get('Content-Disposition', '')
+                    content_disposition = EmailParser._decode_header(
+                        part.get('Content-Disposition', '')
+                    )
+                    disposition_type = EmailParser._extract_disposition_type(
+                        content_disposition
+                    )
 
-                    if content_type == 'text/plain' and 'attachment' not in content_disposition:
+                    if content_type == 'text/plain' and disposition_type != 'attachment':
                         # 文本内容
                         payload = part.get_payload(decode=True)
                         if payload:
@@ -110,7 +117,7 @@ class EmailParser:
                                 content_text += payload.decode(
                                     'utf-8', errors='ignore')
 
-                    elif content_type == 'text/html' and 'attachment' not in content_disposition:
+                    elif content_type == 'text/html' and disposition_type != 'attachment':
                         # HTML内容
                         payload = part.get_payload(decode=True)
                         if payload:
@@ -122,7 +129,7 @@ class EmailParser:
                                 content_html += payload.decode(
                                     'utf-8', errors='ignore')
 
-                    elif 'attachment' in content_disposition or part.get_filename():
+                    elif disposition_type == 'attachment' or part.get_filename():
                         # 附件
                         filename = part.get_filename()
                         if filename:
@@ -141,7 +148,7 @@ class EmailParser:
                                 'content_type': content_type,
                                 'size': len(part.get_payload(decode=True) or b''),
                                 'content': part.get_payload(decode=True),
-                                'content_disposition_type': EmailParser._extract_disposition_type(content_disposition),
+                                'content_disposition_type': disposition_type,
                                 'content_id': content_id
                             }
                             attachments.append(attachment_info)
@@ -196,38 +203,57 @@ class EmailParser:
             raise
 
     @staticmethod
-    def _decode_header(header_value: str) -> str:
-        """解码MIME编码的邮件头"""
+    def _decode_header(header_value) -> str:
+        """解码MIME编码的邮件头，并兼容Header对象和unknown-8bit头。"""
         if not header_value:
             return ''
 
+        original_value = header_value
+
         try:
-            # 解码MIME编码的头部
+            # Python email在遇到未按RFC编码的8-bit头时会返回Header对象；
+            # 直接对Header做 in/startswith/split 会抛 TypeError，先转成可解码文本。
+            if isinstance(header_value, email.header.Header):
+                header_value = header_value.encode()
+            elif isinstance(header_value, bytes):
+                header_value = header_value.decode('utf-8', errors='replace')
+            else:
+                header_value = str(header_value)
+
             decoded_parts = email.header.decode_header(header_value)
             decoded_string = ''
 
             for part, encoding in decoded_parts:
                 if isinstance(part, bytes):
-                    # 如果有指定编码，使用指定编码；否则尝试UTF-8
-                    if encoding:
-                        try:
-                            decoded_string += part.decode(encoding)
-                        except (UnicodeDecodeError, LookupError):
-                            # 如果指定编码失败，尝试UTF-8
-                            decoded_string += part.decode('utf-8',
-                                                          errors='ignore')
-                    else:
-                        # 没有编码信息，尝试UTF-8
-                        decoded_string += part.decode('utf-8', errors='ignore')
+                    decoded_string += EmailParser._decode_header_bytes(
+                        part, encoding
+                    )
                 else:
-                    # 已经是字符串
-                    decoded_string += part
+                    decoded_string += str(part)
 
             return decoded_string.strip()
 
         except Exception as e:
-            logger.warning(f"解码邮件头失败: {e}, 原始值: {header_value}")
-            return header_value
+            logger.warning(f"解码邮件头失败: {e}, 原始值: {original_value}")
+            return str(original_value)
+
+    @staticmethod
+    def _decode_header_bytes(part: bytes, encoding: Optional[str]) -> str:
+        """按邮件头声明编码解码字节，unknown-8bit优先尝试UTF-8。"""
+        candidate_encodings = []
+
+        if encoding and encoding.lower() != 'unknown-8bit':
+            candidate_encodings.append(encoding)
+
+        candidate_encodings.extend(['utf-8', 'gb18030', 'latin1'])
+
+        for candidate_encoding in candidate_encodings:
+            try:
+                return part.decode(candidate_encoding)
+            except (UnicodeDecodeError, LookupError):
+                continue
+
+        return part.decode('utf-8', errors='replace')
 
     @staticmethod
     def _extract_raw_headers(msg: Message) -> str:
@@ -236,7 +262,7 @@ class EmailParser:
             # 构建包含所有头信息的字符串
             headers = []
             for key, value in msg.items():
-                headers.append(f"{key}: {value}")
+                headers.append(f"{key}: {EmailParser._decode_header(value)}")
             return "\n".join(headers)
         except Exception as e:
             logger.warning(f"提取原始邮件头失败: {e}")
@@ -257,6 +283,7 @@ class EmailParser:
             return ''
             
         original_filename = filename
+        filename = EmailParser._decode_header(filename)
         
         try:
             # 1. 首先检查是否是MIME编码格式 (=?charset?encoding?encoded-text?=)
@@ -302,9 +329,14 @@ class EmailParser:
 
             if msg.is_multipart():
                 for part in msg.walk():
-                    content_disposition = part.get('Content-Disposition', '')
+                    content_disposition = EmailParser._decode_header(
+                        part.get('Content-Disposition', '')
+                    )
+                    disposition_type = EmailParser._extract_disposition_type(
+                        content_disposition
+                    )
 
-                    if 'attachment' in content_disposition or part.get_filename():
+                    if disposition_type == 'attachment' or part.get_filename():
                         filename = part.get_filename()
                         if filename:
                             decoded_filename = EmailParser._decode_filename(
@@ -314,7 +346,7 @@ class EmailParser:
                                 'filename': decoded_filename,
                                 'content_type': part.get_content_type(),
                                 'size': len(part.get_payload(decode=True) or b''),
-                                'content_disposition_type': EmailParser._extract_disposition_type(part.get('Content-Disposition', ''))
+                                'content_disposition_type': disposition_type
                             }
                             attachments.append(attachment_info)
 
@@ -330,9 +362,14 @@ class EmailParser:
         try:
             if msg.is_multipart():
                 for part in msg.walk():
-                    content_disposition = part.get('Content-Disposition', '')
+                    content_disposition = EmailParser._decode_header(
+                        part.get('Content-Disposition', '')
+                    )
+                    disposition_type = EmailParser._extract_disposition_type(
+                        content_disposition
+                    )
 
-                    if 'attachment' in content_disposition or part.get_filename():
+                    if disposition_type == 'attachment' or part.get_filename():
                         part_filename = part.get_filename()
                         if part_filename:
                             decoded_filename = EmailParser._decode_filename(
@@ -357,6 +394,8 @@ class EmailParser:
         Returns:
             disposition类型（去除参数部分），如果解析失败返回空字符串
         """
+        content_disposition = EmailParser._decode_header(content_disposition)
+
         if not content_disposition:
             return ''
 
@@ -390,6 +429,8 @@ class EmailParser:
         """
         if not text:
             return ''
+
+        text = str(text)
         
         try:
             # 去掉首尾空格和回车符
