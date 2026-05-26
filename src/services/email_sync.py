@@ -730,7 +730,8 @@ class EmailSyncService:
                 logger.debug(
                     f"开始额外处理prodigy邮件: message_id={parsed_email['message_id']}")
                 match = re.search(
-                    r'Our Inquiry (RFQ-[^\-]*)-', parsed_email.get('subject'))
+                    r'Our Inquiry\s+(RFQ-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\s*-',
+                    parsed_email.get('subject'))
                 if match:
                     logger.debug(f"rfq: {match.group(1)}")
                     attachments = await process_prodigy_rfq(match.group(1), email_uid, parsed_email)
