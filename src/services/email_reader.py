@@ -33,7 +33,23 @@ class EmailReader:
 
             # 对于163邮箱，发送ID命令以通过安全验证
             if "163.com" in settings.imap_server:
-                self.client.id_({"name": "IMAPClient", "version": "2.1.0"})
+                try:
+                    self.client.id_({"name": "IMAPClient", "version": "2.1.0"})
+                except Exception as e:
+                    logger.warning(f"IMAP ID命令失败，将重新连接并跳过ID命令: {e}")
+                    try:
+                        self.client.shutdown()
+                    except Exception:
+                        pass
+
+                    self.client = IMAPClient(
+                        host=settings.imap_server,
+                        port=settings.imap_port,
+                        ssl=True,
+                        ssl_context=ssl_context
+                    )
+                    self.client.login(
+                        settings.email_username, settings.email_password)
 
             logger.info(f"成功连接到IMAP服务器: {settings.imap_server}")
             return True
