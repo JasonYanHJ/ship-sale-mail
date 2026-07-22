@@ -121,6 +121,7 @@ def reassign_saler(s, salers, email):
         ],
         "Lorna Wang": [
             ("subject", "Anglo-eastern"),
+            ("subject", "Anglo eastern"),
             ("subject", "Seaspan"),
             ("subject", "Optimum"),
             ("subject", "Norbulk Shipping"),
