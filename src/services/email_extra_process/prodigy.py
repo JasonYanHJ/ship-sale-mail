@@ -53,10 +53,11 @@ def getRfqUrl(rfq_number: str):
         )['dataResponse']['data']['rfq']
         rfq = next((item for item in rfq_list
                     if item.get('rfqNumber') == rfq_number), None)
-        if not rfq or not rfq.get('supplyPortId'):
-            raise ValueError(f"未找到Prodigy询价单的supplyPortId: {rfq_number}")
+        if not rfq:
+            raise ValueError(f"未找到Prodigy询价单: {rfq_number}")
 
-        payload['supplyPortId'] = rfq['supplyPortId']
+        if rfq.get('supplyPortId'):
+            payload['supplyPortId'] = rfq['supplyPortId']
 
         response = requests.request(
             "POST", url, headers=headers, data=json.dumps(payload))
