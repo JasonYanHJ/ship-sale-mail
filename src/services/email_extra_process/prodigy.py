@@ -20,14 +20,14 @@ def getRfqUrl(rfq_number: str):
     try:
         url = "https://prodigyp2p-api.prodigymarinesolutions.com/api/RequestForQuote/GetRFQForVP"
 
-        payload = json.dumps({
+        payload = {
             "pageNumber": 1,
             "pageSize": 25,
             "rfqNumber": rfq_number,
             "SourceTypeName": "SPMV3",
             "vendorId": "0b915a4b-f580-4220-b7a7-e201922c4758",
             "vendorLocationId": "f48244e1-ad67-4463-af96-68ea8666a1e2"
-        })
+        }
         headers = {
             'accept': 'application/json',
             'authorization': f'Bearer {prodigy_token_manager.token}',
@@ -37,7 +37,29 @@ def getRfqUrl(rfq_number: str):
             'time_zone': 'IND'
         }
 
-        response = requests.request("POST", url, headers=headers, data=payload)
+        rfq_list_response = requests.request(
+            "POST",
+            "https://prodigyp2p-api.prodigymarinesolutions.com/api/RequestForQuote/GetRFQ",
+            headers=headers,
+            data=json.dumps({
+                "searchOptions": {"rfqNumber": rfq_number},
+                "sortByColumn": "RfqDate",
+                "sortByOrder": "DESC",
+                "pageNumber": 1,
+                "pageSize": 25
+            })
+        )
+        rfq_list = rfq_list_response.json(
+        )['dataResponse']['data']['rfq']
+        rfq = next((item for item in rfq_list
+                    if item.get('rfqNumber') == rfq_number), None)
+        if not rfq or not rfq.get('supplyPortId'):
+            raise ValueError(f"未找到Prodigy询价单的supplyPortId: {rfq_number}")
+
+        payload['supplyPortId'] = rfq['supplyPortId']
+
+        response = requests.request(
+            "POST", url, headers=headers, data=json.dumps(payload))
 
         rfq_url = response.json(
         )['dataResponse']['data']['rfqVendors'][0]['pdfUrl']
