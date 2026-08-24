@@ -224,12 +224,28 @@ class EmailSyncService:
                 # 自动转发前补充系统类业务提醒：
                 # Procure 询价统一提示先做涉敏核查；
                 # ShipServ 询价如果主题命中 Ugland，则额外强调货期与品质要求。
+                # 指定 CMA 相关客户的询价统一提示查询系统，保持报价一致。
                 subject = (parsed_email.get('subject') or '').lower()
-                additional_message = None
+                additional_messages = []
                 if parsed_email.get('from_system') == 'Procure':
-                    additional_message = "该系统敏感船较多，请在报价之前先查询IMO号，如果涉敏，请内部沟通后再处理"
-                elif parsed_email.get('from_system') == 'ShipServ' and 'ugland' in subject:
-                    additional_message = "Ugland大船东，务必遵守货期，高品质。"
+                    additional_messages.append(
+                        "该系统敏感船较多，请在报价之前先查询IMO号，如果涉敏，请内部沟通后再处理")
+                if parsed_email.get('from_system') == 'ShipServ' and 'ugland' in subject:
+                    additional_messages.append(
+                        "Ugland大船东，务必遵守货期，高品质。")
+
+                cma_customers = [
+                    'CMA Ships France',
+                    'CMA CGM C/O',
+                    'ANL Singapore',
+                    'CMA CGM ASIA SHIPPING',
+                    'AMERICAN PRESIDENT LINES',
+                ]
+                if any(customer.lower() in subject for customer in cma_customers):
+                    additional_messages.append("CMA报价请查系统保持价格统一")
+
+                additional_message = '\n'.join(
+                    additional_messages) or None
 
                 # 转发给销售，同时抄送转发员和销售组长，回复对象设置为转发员
                 # 注意此处saler的类型与其他saler略有不同，是由laravel返回的数据
