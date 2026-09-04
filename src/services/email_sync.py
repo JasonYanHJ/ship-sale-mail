@@ -225,6 +225,7 @@ class EmailSyncService:
                 # Procure 询价统一提示先做涉敏核查；
                 # ShipServ 询价如果主题命中 Ugland，则额外强调货期与品质要求。
                 # 指定 CMA 相关客户的询价统一提示查询系统，保持报价一致。
+                # Crowley Government Services 询价统一提示政府及军方项目的品质要求。
                 subject = (parsed_email.get('subject') or '').lower()
                 additional_messages = []
                 if parsed_email.get('from_system') == 'Procure':
@@ -243,6 +244,10 @@ class EmailSyncService:
                 ]
                 if any(customer.lower() in subject for customer in cma_customers):
                     additional_messages.append("CMA报价请查系统保持价格统一")
+
+                if 'crowley government services inc.' in subject:
+                    additional_messages.append(
+                        "CROWLEY GOVERNMENT SERVICES, INC. / Crowley Government Solutions是 Crowley Maritime Corporation 旗下专门做美国政府及军方业务的板块。Crowley 的 Government Services 长期涉及 美国政府船舶管理、海运物流、港口服务、工程及国防项目；需要高品质件，原厂件，不要用国产替代")
 
                 additional_message = '\n'.join(
                     additional_messages) or None
