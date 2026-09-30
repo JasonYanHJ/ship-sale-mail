@@ -227,6 +227,8 @@ class EmailSyncService:
                 # 指定 CMA 相关客户的询价统一提示查询系统，保持报价一致。
                 # Crowley Government Services 询价统一提示政府及军方项目的品质要求。
                 # Seapeak Maritime 询价提示核查船名及报价时抄送 algin。
+                # MSC Shipmanagement 询价提示第一时间回复客户并告知处理中。
+                # BSM 系统询价提示报价标明产品来源及品质。
                 subject = (parsed_email.get('subject') or '').lower()
                 additional_messages = []
                 if parsed_email.get('from_system') == 'Procure':
@@ -253,6 +255,12 @@ class EmailSyncService:
                 if 'seapeak maritime' in subject:
                     additional_messages.append(
                         "Seapeak 集团有俄罗斯 LNG 业务敞口，请注意查询船名，报价时请抄送algin")
+
+                if 'msc shipmanagement ltd.' in subject:
+                    additional_messages.append("MSC邮件请第一时间回复，并告知客户正在处理中。")
+
+                if parsed_email.get('from_system') == 'BSM':
+                    additional_messages.append("报价请一定标明产品来源/品质，客户高度看重")
 
                 additional_message = '\n'.join(
                     additional_messages) or None
