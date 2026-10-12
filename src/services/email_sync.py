@@ -229,6 +229,7 @@ class EmailSyncService:
                 # Seapeak Maritime 询价提示核查船名及报价时抄送 algin。
                 # MSC Shipmanagement 询价提示第一时间回复客户并告知处理中。
                 # BSM 系统询价提示报价标明产品来源及品质。
+                # Teekay Marine (SINGAPORE) LTD 询价提示查询船队订单记录，保持价格一致。
                 subject = (parsed_email.get('subject') or '').lower()
                 additional_messages = []
                 if parsed_email.get('from_system') == 'Procure':
@@ -261,6 +262,9 @@ class EmailSyncService:
 
                 if parsed_email.get('from_system') == 'BSM':
                     additional_messages.append("报价请一定标明产品来源/品质，客户高度看重")
+
+                if 'teekay marine (singapore) ltd' in subject:
+                    additional_messages.append("以前给TEEKAY 供应过船队订单的 请大家查记录保持价格一致")
 
                 additional_message = '\n'.join(
                     additional_messages) or None
